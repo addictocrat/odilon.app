@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Page backgrounds, chat message backgrounds */
+  --background: #F6E6CB;
+  
+  /* Text colors on darker backgrounds, sub texts, descriptions, paragraphs */
+  --foreground: #6B4F4F;
+  
+  /* Logo, headings, titles, important texts, footer backgrounds */
+  --brand-primary: #483434;
+  
+  /* Card backgrounds, button backgrounds */
+  --brand-secondary: #E7D4B5;
+  
+  /* Icons, links, SVGs, effects */
+  --accent: #B6C7AA;
+
+  /* lighter tone #d3ddcc */
+  /* darker tone #919F88 */
+
+  /* blue #2b7fff */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-odilon-logo: var(--brand-primary);
+  --color-odilon-heading: var(--brand-primary);
+  --color-odilon-card: var(--brand-secondary);
+  --color-odilon-button: var(--brand-secondary);
+  --color-odilon-accent: var(--accent);
+  
+  --font-logo: var(--font-gloock), serif;
+  --font-header: var(--font-bree-serif), serif;
+  --font-body: var(--font-assistant), sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  /* overflow-y is managed by pages if needed */
+  font-style: normal !important;
+}
+
+/* Explicitly define font-logo to ensure it wins over default h1 styles */
+.font-logo {
+  font-family: var(--font-gloock), serif !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-header);
+  color: var(--brand-primary);
+  font-style: normal !important;
+}
+
+em, i, .italic {
+  font-style: normal !important;
 }

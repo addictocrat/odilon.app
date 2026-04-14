@@ -1,0 +1,3 @@
+CREATE USER odilon WITH PASSWORD 'newPassword333';
+CREATE DATABASE odilon OWNER odilon;
+GRANT ALL PRIVILEGES ON DATABASE odilon TO odilon;

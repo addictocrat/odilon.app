@@ -1,65 +1,180 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { PaintingGallery } from "@/components/animations/PaintingGallery";
+import { ScrollGuides } from "@/components/animations/ScrollGuides";
+import { HeroSection } from "@/components/homepagesections/HeroSection";
+import { AppDescription } from "@/components/homepagesections/AppDescription";
+import { CTASection } from "@/components/homepagesections/CTASection";
+import { useScrollStore } from "@/hooks/useScrollStore";
 
 export default function Home() {
+  const [logoOpacity, setLogoOpacity] = useState(1);
+  const [descOpacity, setDescOpacity] = useState(0);
+  const [ctaOpacity, setCtaOpacity] = useState(0);
+  const [logoReverse, setLogoReverse] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
+
+  const smoothScrollTo = (target: number, onComplete?: () => void) => {
+    if (typeof window === "undefined") return;
+    
+    setIsScrolling(true);
+    const start = window.scrollY;
+    const distance = target - start;
+    const duration = 2500; // slightly faster for better feel
+    let startTime: number | null = null;
+
+    // Ease In Out Quint
+    const easeInOutQuint = (t: number) => t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t;
+
+    const step = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const progress = Math.min(timeElapsed / duration, 1);
+      
+      const ease = easeInOutQuint(progress);
+      window.scrollTo(0, start + distance * ease);
+
+      if (timeElapsed < duration) {
+        requestAnimationFrame(step);
+      } else {
+        setIsScrolling(false);
+        onComplete?.();
+      }
+    };
+
+    requestAnimationFrame(step);
+  };
+
+  const handleScrollToDesc = () => {
+    const vh = window.innerHeight;
+    smoothScrollTo(vh * 2);
+  };
+
+  useEffect(() => {
+    let lastWheelTime = 0;
+    const threshold = 800; // ms between distinct scrolls
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      
+      const now = Date.now();
+      if (now - lastWheelTime < threshold || isScrolling) return;
+
+      const currentScroll = window.scrollY;
+      const vh = window.innerHeight;
+      const stages = [0, vh * 2, vh * 4];
+
+      if (e.deltaY > 0) {
+        // Find next stage
+        const nextStage = stages.find(s => s > currentScroll + 50);
+        if (nextStage !== undefined) {
+          smoothScrollTo(nextStage);
+          lastWheelTime = now;
+        }
+      } else if (e.deltaY < 0) {
+        // Find prev stage
+        const prevStage = [...stages].reverse().find(s => s < currentScroll - 50);
+        if (prevStage !== undefined) {
+          smoothScrollTo(prevStage);
+          lastWheelTime = now;
+        }
+      }
+    };
+
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [isScrolling]);
+
+  useEffect(() => {
+    const unsubscribe = useScrollStore.subscribe((state) => {
+      const y = state.smoothedY;
+      const vh = window.innerHeight;
+
+      // Sync Logo Reverse state with scroll position
+      // Trigger reverse instantly using raw scrollY to bypass smoothing delay
+      if (state.scrollY < 20) {
+        setLogoReverse(false);
+      } else {
+        setLogoReverse(true);
+      }
+
+      // Logo Fade Out between 0.2vh and 0.7vh
+      const logoStart = vh * 0.2;
+      const logoEnd = vh * 0.7;
+      const lOpacity = Math.max(0, Math.min(1, 1 - (y - logoStart) / (logoEnd - logoStart)));
+      setLogoOpacity(lOpacity);
+
+      // Description Fade In between 1.2vh and 1.8vh
+      const descStart = vh * 1.2;
+      const descEnd = vh * 1.8;
+      // Also fade OUT at 2.4vh
+      const descOutStart = vh * 2.4;
+      const descOutEnd = vh * 2.8;
+
+      let dOpacity = Math.max(0, Math.min(1, (y - descStart) / (descEnd - descStart)));
+      if (y > descOutStart) {
+        dOpacity = Math.max(0, Math.min(dOpacity, 1 - (y - descOutStart) / (descOutEnd - descOutStart)));
+      }
+      setDescOpacity(dOpacity);
+
+      // CTA Fade In between 3.2vh and 3.8vh
+      const ctaStart = vh * 3.2;
+      const ctaEnd = vh * 3.7;
+      const cOpacity = Math.max(0, Math.min(1, (y - ctaStart) / (ctaEnd - ctaStart)));
+      setCtaOpacity(cOpacity);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Lock scroll for the home page's automated experience
+    document.body.style.overflowY = 'hidden';
+    return () => {
+      document.body.style.overflowY = 'auto';
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="relative bg-background min-h-[500vh]">
+      {/* Visual Guides */}
+      <ScrollGuides />
+
+      <div className="sticky top-0 left-0 w-full h-screen overflow-hidden flex flex-col items-center justify-center">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+          <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1.5" fill="#8b7f6c" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Floating Paintings Container */}
+        <PaintingGallery />
+
+        {/* Orchestrated Content */}
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+          <HeroSection 
+            opacity={logoOpacity} 
+            reverseTrigger={logoReverse} 
+            onScrollClick={handleScrollToDesc} 
+          />
+
+          {/* Description Section */}
+          <AppDescription opacity={descOpacity} />
+
+          {/* CTA Section */}
+          <CTASection opacity={ctaOpacity} />
         </div>
-      </main>
-    </div>
+        
+        {/* Framing element */}
+        <div className="absolute inset-10 border-[1px] border-odilon-logo/5 pointer-events-none z-20" />
+      </div>
+    </main>
   );
 }
