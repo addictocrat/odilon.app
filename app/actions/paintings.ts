@@ -10,8 +10,8 @@ export async function searchAndSyncArtworks(query: string, limit: number = 15) {
   try {
     const response = await fetch(
       `https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(
-        query
-      )}&fields=id,title,artist_display,image_id,description,medium_display,date_display,place_of_origin,dimensions&limit=${limit}`
+        query,
+      )}&fields=id,title,artist_display,image_id,description,medium_display,date_display,place_of_origin,dimensions&limit=${limit}`,
     );
     const data = await response.json();
     const results = data.data || [];
@@ -65,10 +65,14 @@ export async function getLibraryPaintings(params: {
   artist?: string;
 }) {
   const { page = 1, limit = 20, search = "", artist = "" } = params;
-  
-  // If searching, sync from ArtIC first to ensure we have fresh results in masonry grid
+
+  // If searching or filtering by artist, sync from ArtIC first to ensure we have results
   if (search.trim()) {
     await searchAndSyncArtworks(search);
+  }
+
+  if (artist.trim()) {
+    await searchAndSyncArtworks(artist, 40); // Fetch more results for artist filter
   }
 
   const offset = (page - 1) * limit;
@@ -78,19 +82,21 @@ export async function getLibraryPaintings(params: {
   if (search || artist) {
     const conditions = [];
     if (search) {
-      conditions.push(or(
-        ilike(paintings.title, `%${search}%`),
-        ilike(paintings.artistDisplay, `%${search}%`)
-      ));
+      conditions.push(
+        or(
+          ilike(paintings.title, `%${search}%`),
+          ilike(paintings.artistDisplay, `%${search}%`),
+        ),
+      );
     }
     if (artist) {
-      conditions.push(eq(paintings.artistDisplay, artist));
+      conditions.push(ilike(paintings.artistDisplay, `%${artist}%`));
     }
-    
+
     if (conditions.length > 1) {
-        whereClause = and(...conditions);
+      whereClause = and(...conditions);
     } else {
-        whereClause = conditions[0];
+      whereClause = conditions[0];
     }
   }
 
@@ -121,13 +127,19 @@ export async function getUniqueArtists() {
     .groupBy(paintings.artistDisplay)
     .orderBy(paintings.artistDisplay);
 
-  return results.map(r => r.artist).filter(Boolean) as string[];
+  return results.map((r) => r.artist).filter(Boolean) as string[];
 }
 
 export async function seedFeaturedPaintings() {
-   // This is a one-time thing or can be called to populate initial data
-   const featuredQueries = ["Claude Monet", "Vincent van Gogh", "Odilon Redon", "Gustav Klimt", "Hilma af Klint"];
-   for (const query of featuredQueries) {
-       await searchAndSyncArtworks(query);
-   }
+  // This is a one-time thing or can be called to populate initial data
+  const featuredQueries = [
+    "Claude Monet",
+    "Vincent van Gogh",
+    "Odilon Redon",
+    "Gustav Klimt",
+    "Hilma af Klint",
+  ];
+  for (const query of featuredQueries) {
+    await searchAndSyncArtworks(query);
+  }
 }
