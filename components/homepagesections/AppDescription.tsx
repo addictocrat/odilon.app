@@ -16,7 +16,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInitialized = useRef(false);
 
-  const closedEyes = PAINTINGS.find(p => p.id === "closed-eyes");
+  const closedEyes = PAINTINGS.find((p) => p.id === "closed-eyes");
 
   useEffect(() => {
     // splitText should only be run once to wrap words in spans
@@ -25,7 +25,8 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
       pElements.forEach((p) => {
         // In anime.js v4, the template must be passed via the 'words' property
         splitText(p, {
-          words: '<span class="word inline-block opacity-0 translate-y-6">{value}</span>'
+          words:
+            '<span class="word inline-block opacity-0 translate-y-6">{value}</span>',
         });
       });
 
@@ -38,7 +39,13 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
         } else if (w.textContent?.includes("appreciates")) {
           w.classList.add("text-[#919F88]");
         } else if (w.textContent?.includes("art")) {
-          w.classList.add("bg-yellow-500", "px-2", "py-0", "rounded-lg", "font-bold");
+          w.classList.add(
+            "bg-yellow-500",
+            "px-2",
+            "py-0",
+            "rounded-lg",
+            "font-bold",
+          );
         } else if (w.textContent?.includes("voice")) {
           w.classList.add("font-bold");
         }
@@ -52,7 +59,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
     // Trigger animation when the section becomes significantly visible
     if (opacity > 0.15 && !hasAnimated) {
       setHasAnimated(true);
-      
+
       const words = textRef.current?.querySelectorAll(".word");
       if (words && words.length > 0) {
         animate(words, {
@@ -60,7 +67,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
           translateY: [24, 0],
           duration: 800,
           delay: stagger(30),
-          easing: "easeOutQuart"
+          easing: "easeOutQuart",
         });
       }
 
@@ -73,19 +80,20 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
           translateY: [20, 0],
           duration: 1400,
           delay: stagger(400, { start: 600 }),
-          easing: "easeOutElastic(1, .8)"
+          easing: "easeOutElastic(1, .8)",
         });
       }
 
       // Animate the button
-      const getStartedBtn = containerRef.current?.querySelector(".get-started-btn");
+      const getStartedBtn =
+        containerRef.current?.querySelector(".get-started-btn");
       if (getStartedBtn) {
         animate(getStartedBtn, {
           opacity: [0, 1],
           translateY: [20, 0],
           duration: 800,
           delay: 0,
-          easing: "easeOutQuart"
+          easing: "easeOutQuart",
         });
       }
 
@@ -97,14 +105,14 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
           translateY: [20, 0],
           duration: 800,
           delay: 200,
-          easing: "easeOutQuart"
+          easing: "easeOutQuart",
         });
       }
-    } 
+    }
     // Reset state when user scrolls completely away
     else if (opacity === 0 && hasAnimated) {
       setHasAnimated(false);
-      
+
       const words = textRef.current?.querySelectorAll(".word");
       if (words) {
         animate(words, { opacity: 0, translateY: 24, duration: 0 });
@@ -112,10 +120,16 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
 
       const bubbles = containerRef.current?.querySelectorAll(".chat-bubble");
       if (bubbles) {
-        animate(bubbles, { opacity: 0, scale: 0.8, translateY: 20, duration: 0 });
+        animate(bubbles, {
+          opacity: 0,
+          scale: 0.8,
+          translateY: 20,
+          duration: 0,
+        });
       }
 
-      const getStartedBtn = containerRef.current?.querySelector(".get-started-btn");
+      const getStartedBtn =
+        containerRef.current?.querySelector(".get-started-btn");
       if (getStartedBtn) {
         animate(getStartedBtn, { opacity: 0, translateY: 20, duration: 0 });
       }
@@ -128,7 +142,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
   }, [opacity, hasAnimated]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center pointer-events-none px-6 md:px-24 lg:px-32"
       style={{ opacity }}
@@ -138,7 +152,8 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
         <div className="relative w-[55%] md:w-[70%] max-h-[75vh] mx-auto">
           {/* Chat Message 1 */}
           <div className="chat-bubble absolute -top-6 -left-4 md:-top-10 md:-left-10 bg-odilon-logo text-[#d3ddcc] p-4 md:p-6 rounded-2xl shadow-2xl max-w-[200px] md:max-w-[280px] font-header text-sm md:text-xl z-20 transform -rotate-2 opacity-0">
-            "Odilon Redon creates a bridge between our reality and hidden dreams."
+            "Odilon Redon creates a bridge between our reality and hidden
+            dreams."
             {/* Bubble Tail */}
             <div className="absolute -bottom-2 left-8 w-4 h-4 bg-odilon-logo rotate-45" />
           </div>
@@ -146,7 +161,11 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
           <div className="relative aspect-[2/3] w-full shadow-2xl overflow-hidden rounded-sm ring-1 ring-odilon-logo/10">
             <Image
               src={getPaintingPath(closedEyes?.src || "")}
-              alt={closedEyes ? `${closedEyes.title} - ${closedEyes.artist}` : "Painting"}
+              alt={
+                closedEyes
+                  ? `${closedEyes.title} - ${closedEyes.artist}`
+                  : "Painting"
+              }
               fill
               className="object-cover"
               priority
@@ -163,17 +182,21 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
 
         {/* Right Side: Programmatic Text */}
         <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left max-w-xl">
-          <div ref={textRef} className="space-y-3 md:space-y-6 flex flex-col items-center md:items-start">
-            <div className="hidden md:block font-logo text-lg md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-2 md:border-b-4 border-[#919F88] font-bold w-fit ">odilon</div>
+          <div
+            ref={textRef}
+            className="space-y-3 md:space-y-6 flex flex-col items-center md:items-start"
+          >
+            <div className="hidden md:block font-logo text-lg md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-2 md:border-b-4 border-[#919F88] font-bold w-fit ">
+              odilon
+            </div>
             <p className="font-header text-3xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
-              AI that explores <  br /> and appreciates art.
+              AI that explores <br /> and appreciates art.
             </p>
             <p className="font-body text-3xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
               & becomes its voice.
             </p>
             <div className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
-             
-              <button 
+              <button
                 onClick={() => router.push("/signup")}
                 className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0 translate-y-5 "
               >
@@ -187,4 +210,3 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
     </div>
   );
 };
-

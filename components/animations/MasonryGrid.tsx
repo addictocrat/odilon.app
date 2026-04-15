@@ -50,16 +50,16 @@ export const MasonryGrid = ({ opacity }: { opacity: number }) => {
   return (
     <div 
       ref={containerRef}
-      className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-6xl mx-auto px-6 pointer-events-auto"
+      className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-8 w-full max-w-4xl md:max-w-6xl mx-auto px-4 md:px-6 pointer-events-auto"
     >
-      {PAINTINGS.map((p, i) => (
+      {PAINTINGS.slice(0, 6).map((p, i) => (
         <div 
           key={p.src}
           className={`grid-item opacity-0 group flex flex-col items-center ${
-            i % 2 === 0 ? "mt-0" : "mt-6 md:mt-12"
+            i % 2 === 0 ? "mt-0" : "mt-2 md:mt-12"
           }`}
         >
-          <div className="relative w-full aspect-[4/5] overflow-hidden rounded-sm shadow-xl transition-all duration-700 hover:shadow-[0_20px_50px_rgba(72,52,52,0.3)] bg-odilon-heading/5">
+          <div className="relative w-full max-w-[120px] md:max-w-none aspect-[4/5] overflow-hidden rounded-sm shadow-xl transition-all duration-700 hover:shadow-[0_20px_50px_rgba(72,52,52,0.3)] bg-odilon-heading/5">
             {/* Inner "Canvas" border */}
             <div className="absolute inset-0 border-[8px] border-odilon-button/30 z-10 pointer-events-none" />
             

@@ -39,10 +39,11 @@ export function PaintingCard({ painting }: PaintingCardProps) {
   };
 
   return (
-    <div 
-      className="break-inside-avoid mb-6 group relative rounded-sm overflow-hidden bg-odilon-card border border-odilon-logo/5 shadow-sm hover:shadow-2xl transition-all duration-500 animate-in fade-in duration-1000 scale-95 hover:scale-[1.02]"
+    <div
+      className="break-inside-avoid mb-2 sm:mb-6 group relative rounded-sm overflow-hidden bg-odilon-card border border-odilon-logo/5 shadow-sm hover:shadow-2xl transition-all duration-500 animate-in fade-in duration-1000 scale-95 hover:scale-[1.02]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => setIsHovered(!isHovered)}
     >
       <div className="relative aspect-auto">
         {painting.imageId ? (
@@ -57,24 +58,36 @@ export function PaintingCard({ painting }: PaintingCardProps) {
             No Image
           </div>
         )}
-        
+
         {/* Overlay */}
-        <div className={cn(
-          "absolute inset-0 bg-gradient-to-t from-odilon-logo/90 via-odilon-logo/40 to-transparent transition-opacity duration-500 flex flex-col justify-end p-2",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}>
-          <div className="space-y-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-            <h3 className="font-header text-lg text-odilon-card leading-tight">
+        <div
+          className={cn(
+            "absolute inset-0 bg-gradient-to-t from-odilon-logo/90 via-odilon-logo/40 to-transparent transition-opacity duration-500 flex flex-col justify-end p-2",
+            isHovered
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none",
+          )}
+        >
+          <div
+            className={cn(
+              "space-y-1 sm:space-y-2 translate-y-4 transition-transform duration-500",
+              isHovered ? "translate-y-0" : "",
+            )}
+          >
+            <h3 className="font-header text-xs sm:text-lg text-odilon-card leading-tight line-clamp-2">
               {painting.title}
             </h3>
-            <p className="font-body text-xs text-odilon-card/70 uppercase tracking-widest">
+            <p className="font-body text-[8px] sm:text-xs text-odilon-card/70 uppercase tracking-widest truncate">
               {painting.artistDisplay}
             </p>
             <div className="">
               <button
-                onClick={handleStartChat}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStartChat();
+                }}
                 disabled={isCreating}
-                className="w-full py-1 cursor-pointer bg-odilon-accent text-odilon-heading rounded-sm font-header text-xs uppercase tracking-widest hover:bg-odilon-card hover:text-odilon-logo transition-all flex items-center justify-center gap-2"
+                className="w-full py-1 cursor-pointer bg-odilon-accent text-odilon-heading rounded-sm font-header text-[9px] sm:text-xs uppercase tracking-widest hover:bg-odilon-card hover:text-odilon-logo transition-all flex items-center justify-center gap-1 sm:gap-2"
               >
                 {isCreating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

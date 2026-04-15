@@ -16,15 +16,16 @@ export function MasonryGrid({ paintings }: MasonryGridProps) {
           The sanctuary is silent
         </h2>
         <p className="font-body text-sm text-odilon-logo/40 max-w-md mx-auto">
-          We couldn't find any masterpieces matching your vision. Try searching for a different artist or title.
+          We couldn't find any masterpieces matching your vision. Try searching
+          for a different artist or title.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="w-full px-4 md:px-8 lg:px-12 py-12">
-      <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-6">
+    <div className="w-full px-2 sm:px-4 md:px-8 lg:px-12 py-6 sm:py-12">
+      <div className="columns-2 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-2 sm:gap-6">
         {paintings.map((painting) => (
           <PaintingCard key={painting.id} painting={painting} />
         ))}

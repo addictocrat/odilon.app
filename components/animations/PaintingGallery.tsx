@@ -9,25 +9,32 @@ import { PAINTINGS, getPaintingPath } from "@/lib/paintings";
 
 // Pre-calculate even distribution that avoids the center logo
 const gridSpots = [
-  { x: 12, y: 18, mobileHidden: true }, { x: 32, y: 18 }, { x: 68, y: 18 }, { x: 88, y: 18, mobileHidden: true }, // Top
-  { x: 10, y: 50, mobileHidden: true }, { x: 90, y: 50, mobileHidden: true },                                   // Mid
-  { x: 12, y: 82, mobileHidden: true }, { x: 32, y: 82 }, { x: 68, y: 82 }, { x: 88, y: 82, mobileHidden: true }, // Bot
+  { x: 12, y: 18, mobileHidden: true },
+  { x: 32, y: 18 },
+  { x: 68, y: 18 },
+  { x: 88, y: 18, mobileHidden: true }, // Top
+  { x: 10, y: 50, mobileHidden: true },
+  { x: 90, y: 50, mobileHidden: true }, // Mid
+  { x: 12, y: 82, mobileHidden: true },
+  { x: 32, y: 82 },
+  { x: 68, y: 82 },
+  { x: 88, y: 82, mobileHidden: true }, // Bot
 ];
 
 const paintingConfigs = PAINTINGS.map((p, i) => {
   const spot = gridSpots[i % gridSpots.length];
-  
+
   // Add deterministic jitter to keep it organic but stable
-  const top = spot.y + (Math.sin(i * 1.5) * 4);
-  const left = spot.x + (Math.cos(i * 2.2) * 5);
+  const top = spot.y + Math.sin(i * 1.5) * 4;
+  const left = spot.x + Math.cos(i * 2.2) * 5;
 
   return {
     src: p.src,
     top: `${top}%`,
     left: `${left}%`,
     depth: 0.15 + (i % 4) * 0.15, // slightly more pronounced parallax
-    scale: 0.28 + (i % 3) * 0.08,  // slightly smaller to ensure no overlap
-    rotation: (i % 6) * 12 - 30,  // varied elegant tilts
+    scale: 0.28 + (i % 3) * 0.08, // slightly smaller to ensure no overlap
+    rotation: (i % 6) * 12 - 30, // varied elegant tilts
     alt: `${p.title} - ${p.artist}`,
     mobileHidden: (spot as any).mobileHidden || false,
   };
@@ -37,14 +44,14 @@ export const PaintingGallery = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const paintingRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollRefs = useRef<(HTMLDivElement | null)[]>([]);
-  
+
   const sparkleRef = useRef<HTMLDivElement | null>(null);
   const sparkleScrollRef = useRef<HTMLDivElement | null>(null);
   const sparkleMouseRef = useRef<HTMLDivElement | null>(null);
   const sparkleProxy = useRef({
     x: parseFloat(paintingConfigs[0].left),
     y: parseFloat(paintingConfigs[0].top),
-    depth: paintingConfigs[0].depth
+    depth: paintingConfigs[0].depth,
   });
 
   const [activeIndex, setActiveIndex] = useState<number>(0);
@@ -74,7 +81,10 @@ export const PaintingGallery = () => {
       // Skip hidden paintings on mobile
       if (isMobile) {
         let attempts = 0;
-        while (paintingConfigs[nextIdx].mobileHidden && attempts < paintingConfigs.length) {
+        while (
+          paintingConfigs[nextIdx].mobileHidden &&
+          attempts < paintingConfigs.length
+        ) {
           nextIdx = (nextIdx + 1) % paintingConfigs.length;
           attempts++;
         }
@@ -114,19 +124,19 @@ export const PaintingGallery = () => {
     // Start the loop: show first painting, begin cycling after 5s
     let initialIdx = 0;
     if (isMobile && paintingConfigs[0].mobileHidden) {
-      initialIdx = paintingConfigs.findIndex(p => !p.mobileHidden);
+      initialIdx = paintingConfigs.findIndex((p) => !p.mobileHidden);
       if (initialIdx === -1) initialIdx = 0;
     }
 
     setActiveIndex(initialIdx);
     setIsVisible(true);
     activeIndexRef.current = initialIdx;
-    
+
     // Sync initial sparkle position
     sparkleProxy.current = {
       x: parseFloat(paintingConfigs[initialIdx].left),
       y: parseFloat(paintingConfigs[initialIdx].top),
-      depth: paintingConfigs[initialIdx].depth
+      depth: paintingConfigs[initialIdx].depth,
     };
 
     pauseTimer = setTimeout(goToNext, 2500);
@@ -179,7 +189,7 @@ export const PaintingGallery = () => {
       paintingRefs.current.forEach((ref, i) => {
         if (!ref) return;
         const config = paintingConfigs[i];
-        
+
         const xMove = mouseX * 100 * config.depth;
         const yMove = mouseY * 100 * config.depth;
         const rotateX = mouseY * -10 * config.depth;
@@ -216,17 +226,17 @@ export const PaintingGallery = () => {
       scrollRefs.current.forEach((ref, i) => {
         if (!ref) return;
         const config = paintingConfigs[i];
-        
+
         // Items with higher depth (closer) will ascend faster
-        const scrollSpeedMultiplier = 0.5 + (config.depth * 2);
+        const scrollSpeedMultiplier = 0.5 + config.depth * 2;
         const yOffset = -smoothedY * scrollSpeedMultiplier;
-        
+
         ref.style.transform = `translateY(${yOffset}px)`;
       });
 
       if (sparkleScrollRef.current) {
         const depth = sparkleProxy.current.depth;
-        const scrollSpeedMultiplier = 0.5 + (depth * 2);
+        const scrollSpeedMultiplier = 0.5 + depth * 2;
         const yOffset = -smoothedY * scrollSpeedMultiplier;
         sparkleScrollRef.current.style.transform = `translateY(${yOffset}px)`;
       }
@@ -251,12 +261,16 @@ export const PaintingGallery = () => {
       >
         <polyline
           points={(() => {
-            const visibleConfigs = isMobile 
-              ? paintingConfigs.filter(c => !c.mobileHidden)
+            const visibleConfigs = isMobile
+              ? paintingConfigs.filter((c) => !c.mobileHidden)
               : paintingConfigs;
             if (visibleConfigs.length === 0) return "";
-            return visibleConfigs.map(c => `${parseFloat(c.left)},${parseFloat(c.top)}`).join(' ') + 
-                   ` ${parseFloat(visibleConfigs[0].left)},${parseFloat(visibleConfigs[0].top)}`;
+            return (
+              visibleConfigs
+                .map((c) => `${parseFloat(c.left)},${parseFloat(c.top)}`)
+                .join(" ") +
+              ` ${parseFloat(visibleConfigs[0].left)},${parseFloat(visibleConfigs[0].top)}`
+            );
           })()}
           fill="none"
           stroke="transparent"
@@ -267,7 +281,7 @@ export const PaintingGallery = () => {
       {/* The Sparkle Element */}
       <div
         ref={sparkleRef}
-        className={`absolute z-50 pointer-events-none transition-opacity duration-500 ${isMobile ? 'opacity-0 invisible' : 'opacity-100 visible'}`}
+        className={`absolute z-50 pointer-events-none transition-opacity duration-500 ${isMobile ? "opacity-0 invisible" : "opacity-100 visible"}`}
         style={{
           left: `${sparkleProxy.current.x}%`,
           top: `${sparkleProxy.current.y}%`,
@@ -282,33 +296,32 @@ export const PaintingGallery = () => {
 
             {/* Analysis & Message Box — flips left when near right edge */}
             {(() => {
-              const isRightEdge = parseFloat(paintingConfigs[activeIndex].left) > 65;
+              const isRightEdge =
+                parseFloat(paintingConfigs[activeIndex].left) > 65;
               const posClass = isRightEdge
-                ? "right-12"  // box appears to the LEFT of the sparkle
+                ? "right-12" // box appears to the LEFT of the sparkle
                 : "left-12"; // box appears to the RIGHT of the sparkle
               const slideClass = isVisible
                 ? "opacity-100 translate-x-0"
                 : isRightEdge
-                  ? "opacity-0 translate-x-4"   // fades out toward right
+                  ? "opacity-0 translate-x-4" // fades out toward right
                   : "opacity-0 -translate-x-4"; // fades out toward left
               return (
                 <div
                   className={`absolute ${posClass} rounded-lg top-1/2 -translate-y-1/2 z-[100] w-72 p-2 px-3 bg-odilon-logo shadow-2xl transition-all duration-500 pointer-events-none text-[#d3ddcc] font-sans ${slideClass}`}
                 >
-              {PAINTINGS[activeIndex] && (
-                <div className="flex flex-col gap-2">
-                
-                  {/* <div className="h-px w-full bg-[#483434]/10" /> */}
-                  <div>
-                   
-                    <p className="text-sm leading-relaxed">
-                      {PAINTINGS[activeIndex].message}
-                    </p>
-                  </div>
+                  {PAINTINGS[activeIndex] && (
+                    <div className="flex flex-col gap-2">
+                      {/* <div className="h-px w-full bg-[#483434]/10" /> */}
+                      <div>
+                        <p className="text-sm leading-relaxed">
+                          {PAINTINGS[activeIndex].message}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-                 </div>
-               );
+              );
             })()}
           </div>
         </div>
@@ -319,20 +332,24 @@ export const PaintingGallery = () => {
           key={config.src}
           role="img"
           aria-label={config.alt}
-          className={`absolute transition-opacity duration-500 ${isMobile && config.mobileHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          className={`absolute transition-opacity duration-500 ${isMobile && config.mobileHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
           style={{
             top: config.top,
             left: config.left,
             transform: "translate(-50%, -50%)",
-            visibility: isMobile && config.mobileHidden ? 'hidden' : 'visible'
+            visibility: isMobile && config.mobileHidden ? "hidden" : "visible",
           }}
         >
           {/* Scroll Control Wrapper */}
-          <div ref={(el) => { scrollRefs.current[i] = el; }}>
+          <div
+            ref={(el) => {
+              scrollRefs.current[i] = el;
+            }}
+          >
             {/* Idle Float Wrapper using flaw-free native CSS animation isolated to each piece */}
-            <div 
-              style={{ 
-                animation: `float-anim-${i} ${3.5 + config.depth * 3}s ease-in-out infinite alternate` 
+            <div
+              style={{
+                animation: `float-anim-${i} ${3.5 + config.depth * 3}s ease-in-out infinite alternate`,
               }}
             >
               <style>{`
@@ -343,36 +360,38 @@ export const PaintingGallery = () => {
               `}</style>
               {/* Mouse Control Wrapper */}
               <div
-                ref={(el) => { paintingRefs.current[i] = el; }}
-              className={`transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-              style={{
-                width: "280px",
-                aspectRatio: "2/3",
-                perspective: "1000px",
-              }}
-            >
-            <div 
-              className="w-full h-full shadow-2xl overflow-hidden"
-              style={{ 
-                transform: `scale(${config.scale}) rotate(${config.rotation}deg)`,
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <div 
-                className="w-full h-full overflow-hidden"
-                style={{ 
-                  backgroundImage: `url(${getPaintingPath(config.src)})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                ref={(el) => {
+                  paintingRefs.current[i] = el;
+                }}
+                className={`transition-opacity duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}
+                style={{
+                  width: "280px",
+                  aspectRatio: "2/3",
+                  perspective: "1000px",
                 }}
               >
-                {/* Grain and Texture Overlay */}
-                <div className="absolute inset-0 bg-black/5 mix-blend-multiply opacity-20" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/5" />
+                <div
+                  className="w-full h-full shadow-2xl overflow-hidden"
+                  style={{
+                    transform: `scale(${config.scale}) rotate(${config.rotation}deg)`,
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  <div
+                    className="w-full h-full overflow-hidden"
+                    style={{
+                      backgroundImage: `url(${getPaintingPath(config.src)})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  >
+                    {/* Grain and Texture Overlay */}
+                    <div className="absolute inset-0 bg-black/5 mix-blend-multiply opacity-20" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/5" />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          </div>
           </div>
         </div>
       ))}
