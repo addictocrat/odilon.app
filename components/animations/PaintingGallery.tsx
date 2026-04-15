@@ -9,9 +9,9 @@ import { PAINTINGS, getPaintingPath } from "@/lib/paintings";
 
 // Pre-calculate even distribution that avoids the center logo
 const gridSpots = [
-  { x: 12, y: 18 }, { x: 32, y: 18 }, { x: 68, y: 18 }, { x: 88, y: 18 }, // Top
-  { x: 10, y: 50 }, { x: 90, y: 50 },                                   // Mid
-  { x: 12, y: 82 }, { x: 32, y: 82 }, { x: 68, y: 82 }, { x: 88, y: 82 }, // Bot
+  { x: 12, y: 18, mobileHidden: true }, { x: 32, y: 18 }, { x: 68, y: 18 }, { x: 88, y: 18, mobileHidden: true }, // Top
+  { x: 10, y: 50, mobileHidden: true }, { x: 90, y: 50, mobileHidden: true },                                   // Mid
+  { x: 12, y: 82, mobileHidden: true }, { x: 32, y: 82 }, { x: 68, y: 82 }, { x: 88, y: 82, mobileHidden: true }, // Bot
 ];
 
 const paintingConfigs = PAINTINGS.map((p, i) => {
@@ -29,6 +29,7 @@ const paintingConfigs = PAINTINGS.map((p, i) => {
     scale: 0.28 + (i % 3) * 0.08,  // slightly smaller to ensure no overlap
     rotation: (i % 6) * 12 - 30,  // varied elegant tilts
     alt: `${p.title} - ${p.artist}`,
+    mobileHidden: (spot as any).mobileHidden || false,
   };
 });
 
@@ -50,6 +51,15 @@ export const PaintingGallery = () => {
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const activeIndexRef = useRef<number>(0);
 
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     let active = true;
     let travelAnim: ReturnType<typeof animate> | null = null;
@@ -59,7 +69,17 @@ export const PaintingGallery = () => {
       if (!active) return;
 
       const currentIdx = activeIndexRef.current;
-      const nextIdx = (currentIdx + 1) % paintingConfigs.length;
+      let nextIdx = (currentIdx + 1) % paintingConfigs.length;
+
+      // Skip hidden paintings on mobile
+      if (isMobile) {
+        let attempts = 0;
+        while (paintingConfigs[nextIdx].mobileHidden && attempts < paintingConfigs.length) {
+          nextIdx = (nextIdx + 1) % paintingConfigs.length;
+          attempts++;
+        }
+      }
+
       const nextConfig = paintingConfigs[nextIdx];
 
       // 1. Fade out the box — content stays, only visibility changes
@@ -92,9 +112,23 @@ export const PaintingGallery = () => {
     };
 
     // Start the loop: show first painting, begin cycling after 5s
-    setActiveIndex(0);
+    let initialIdx = 0;
+    if (isMobile && paintingConfigs[0].mobileHidden) {
+      initialIdx = paintingConfigs.findIndex(p => !p.mobileHidden);
+      if (initialIdx === -1) initialIdx = 0;
+    }
+
+    setActiveIndex(initialIdx);
     setIsVisible(true);
-    activeIndexRef.current = 0;
+    activeIndexRef.current = initialIdx;
+    
+    // Sync initial sparkle position
+    sparkleProxy.current = {
+      x: parseFloat(paintingConfigs[initialIdx].left),
+      y: parseFloat(paintingConfigs[initialIdx].top),
+      depth: paintingConfigs[initialIdx].depth
+    };
+
     pauseTimer = setTimeout(goToNext, 2500);
 
     // Render loop: sync sparkle DOM position from proxy
@@ -216,7 +250,14 @@ export const PaintingGallery = () => {
         preserveAspectRatio="none"
       >
         <polyline
-          points={paintingConfigs.map(c => `${parseFloat(c.left)},${parseFloat(c.top)}`).join(' ') + ` ${parseFloat(paintingConfigs[0].left)},${parseFloat(paintingConfigs[0].top)}`}
+          points={(() => {
+            const visibleConfigs = isMobile 
+              ? paintingConfigs.filter(c => !c.mobileHidden)
+              : paintingConfigs;
+            if (visibleConfigs.length === 0) return "";
+            return visibleConfigs.map(c => `${parseFloat(c.left)},${parseFloat(c.top)}`).join(' ') + 
+                   ` ${parseFloat(visibleConfigs[0].left)},${parseFloat(visibleConfigs[0].top)}`;
+          })()}
           fill="none"
           stroke="transparent"
           strokeWidth="0.1"
@@ -226,10 +267,10 @@ export const PaintingGallery = () => {
       {/* The Sparkle Element */}
       <div
         ref={sparkleRef}
-        className="absolute z-50 pointer-events-none"
+        className={`absolute z-50 pointer-events-none transition-opacity duration-500 ${isMobile ? 'opacity-0 invisible' : 'opacity-100 visible'}`}
         style={{
-          left: `${parseFloat(paintingConfigs[0].left)}%`,
-          top: `${parseFloat(paintingConfigs[0].top)}%`,
+          left: `${sparkleProxy.current.x}%`,
+          top: `${sparkleProxy.current.y}%`,
           transform: "translate(-50%, -50%)",
         }}
       >
@@ -278,11 +319,12 @@ export const PaintingGallery = () => {
           key={config.src}
           role="img"
           aria-label={config.alt}
-          className="absolute"
+          className={`absolute transition-opacity duration-500 ${isMobile && config.mobileHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{
             top: config.top,
             left: config.left,
             transform: "translate(-50%, -50%)",
+            visibility: isMobile && config.mobileHidden ? 'hidden' : 'visible'
           }}
         >
           {/* Scroll Control Wrapper */}

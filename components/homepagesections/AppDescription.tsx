@@ -130,12 +130,12 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
   return (
     <div 
       ref={containerRef}
-      className="absolute inset-0 flex items-center justify-center pointer-events-none px-12 md:px-24 lg:px-32"
+      className="absolute inset-0 flex items-center justify-center pointer-events-none px-6 md:px-24 lg:px-32"
       style={{ opacity }}
     >
-      <div className="w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-0 items-center">
+      <div className="w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 lg:gap-0 items-center">
         {/* Left Side: Painting (Huge, 2:3) */}
-        <div className="relative w-[75%] md:w-[70%] max-h-[75vh] mx-auto">
+        <div className="relative w-[55%] md:w-[70%] max-h-[75vh] mx-auto">
           {/* Chat Message 1 */}
           <div className="chat-bubble absolute -top-6 -left-4 md:-top-10 md:-left-10 bg-odilon-logo text-[#d3ddcc] p-4 md:p-6 rounded-2xl shadow-2xl max-w-[200px] md:max-w-[280px] font-header text-sm md:text-xl z-20 transform -rotate-2 opacity-0">
             "Odilon Redon creates a bridge between our reality and hidden dreams."
@@ -162,20 +162,20 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
         </div>
 
         {/* Right Side: Programmatic Text */}
-        <div className="flex flex-col justify-center items-start text-left max-w-xl">
-          <div ref={textRef} className="space-y-4 md:space-y-6">
-            <div className=" font-logo text-xl md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-4 border-[#919F88] font-bold w-fit ">odilon</div>
-            <p className="font-header text-4xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
+        <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left max-w-xl">
+          <div ref={textRef} className="space-y-3 md:space-y-6 flex flex-col items-center md:items-start">
+            <div className="hidden md:block font-logo text-lg md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-2 md:border-b-4 border-[#919F88] font-bold w-fit ">odilon</div>
+            <p className="font-header text-3xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
               AI that explores <  br /> and appreciates art.
             </p>
-            <p className="font-body text-4xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
+            <p className="font-body text-3xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
               & becomes its voice.
             </p>
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 mt-10">
+            <div className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
              
               <button 
                 onClick={() => router.push("/signup")}
-                className="get-started-btn px-12 py-5 bg-[#EBEBEB] text-odilon-heading font-header text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0 translate-y-5 "
+                className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0 translate-y-5 "
               >
                 Join now
               </button>
