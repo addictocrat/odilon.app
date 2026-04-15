@@ -2,19 +2,19 @@
 
 :root {
   /* Page backgrounds, chat message backgrounds */
-  --background: #F6E6CB;
-  
+  --background: #f6e6cb;
+
   /* Text colors on darker backgrounds, sub texts, descriptions, paragraphs */
-  --foreground: #6B4F4F;
-  
+  --foreground: #6b4f4f;
+
   /* Logo, headings, titles, important texts, footer backgrounds */
   --brand-primary: #483434;
-  
+
   /* Card backgrounds, button backgrounds */
-  --brand-secondary: #E7D4B5;
-  
+  --brand-secondary: #e7d4b5;
+
   /* Icons, links, SVGs, effects */
-  --accent: #B6C7AA;
+  --accent: #b6c7aa;
 
   /* lighter tone #d3ddcc */
   /* darker tone #919F88 */
@@ -30,7 +30,7 @@
   --color-odilon-card: var(--brand-secondary);
   --color-odilon-button: var(--brand-secondary);
   --color-odilon-accent: var(--accent);
-  
+
   --font-logo: var(--font-gloock), serif;
   --font-header: var(--font-bree-serif), serif;
   --font-body: var(--font-assistant), sans-serif;
@@ -45,17 +45,32 @@ body {
   font-style: normal !important;
 }
 
-/* Explicitly define font-logo to ensure it wins over default h1 styles */
+/* Explicitly define font utilities */
 .font-logo {
   font-family: var(--font-gloock), serif !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-header);
+.font-header {
+  font-family: var(--font-bree-serif), serif !important;
+}
+
+.font-body {
+  font-family: var(--font-assistant), sans-serif !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-bree-serif), serif;
   color: var(--brand-primary);
   font-style: normal !important;
 }
 
-em, i, .italic {
+em,
+i,
+.italic {
   font-style: normal !important;
 }

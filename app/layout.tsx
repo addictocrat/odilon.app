@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gloock, Bree_Serif, Assistant } from "next/font/google";
 import { TopBanner } from "@/components/TopBanner";
+import { getSession } from "@/lib/auth/session";
 import "./globals.css";
 
 const gloock = Gloock({
@@ -22,18 +23,24 @@ const assistant = Assistant({
 
 export const metadata: Metadata = {
   title: "Odilon | The Art of Conversation",
-  description: "Talk to paintings and explore the depths of art through interactive AI conversations.",
+  description:
+    "Talk to paintings and explore the depths of art through interactive AI conversations.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+  const isAuthenticated = !!session;
+
   return (
     <html lang="en" className="h-full antialiased">
-      <body className={`${gloock.variable} ${breeSerif.variable} ${assistant.variable} min-h-full flex flex-col`}>
-        <TopBanner />
+      <body
+        className={`${gloock.variable} ${breeSerif.variable} ${assistant.variable} min-h-full flex flex-col`}
+      >
+        <TopBanner isAuthenticated={isAuthenticated} />
         {children}
       </body>
     </html>
