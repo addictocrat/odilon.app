@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Odilon App: The Art of Conversation 🎨
 
-## Getting Started
+**Odilon** is a premium, AI-powered web experience designed for art enthusiasts and personal curators. It transforms static media into dynamic, conversational, and exploratory journeys.
 
-First, run the development server:
+## 🛠 Core Tools
+
+### 🏛 Odilon Museum (Talk to Paintings)
+
+Unlock the "spirit" of world-class masterpieces. Using the ArtIC API and advanced AI, Odilon allows you to have deep, poetic conversations with paintings. Each artwork is synchronized to a local library, creating a personal sanctuary of artistic dialogue.
+
+### 🧭 Odilon Compass (Content Recommender)
+
+A multi-genre discovery engine for your soul. Save your favorite books, movies, games, and more. Odilon Compass analyzes your taste to curate unique journeys across different media formats, complete with poetic explanations for every recommendation.
+
+## 🚀 Local Setup Guide
+
+Follow these steps to get Odilon running on your machine:
+
+### 1. Prerequisites
+
+- **Node.js** (v18 or higher recommended)
+- **PNPM** or **NPM**
+- **PostgreSQL** database
+
+### 2. Clone & Install
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/your-username/odilonapp.git
+cd odilonapp
+pnpm install # or npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Environment Configuration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create a `.env.local` file in the root directory and add the following:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# AI Provider (OpenRouter)
+OPENROUTER_API_KEY=your_api_key_here
+OPENROUTER_MODEL=google/gemini-2.0-flash-001
 
-## Learn More
+# Database
+POSTGRES_URL=postgresql://user:password@localhost:5432/odilon
 
-To learn more about Next.js, take a look at the following resources:
+# Authentication & URL
+AUTH_SECRET=your_random_secret
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Email (Optional/SMTP)
+SMTP_HOST=your_smtp_host
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+SMTP_FROM=Odilon <noreply@yourdomain.com>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Database Setup
 
-## Deploy on Vercel
+Push the schema to your local PostgreSQL instance:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm db:push # or npm run db:push
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Launch the App
+
+```bash
+pnpm dev # or npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to start your artistic journey.
+
+---
+
+Built with **Next.js**, **Drizzle ORM**, and the **Vercel AI SDK**. Inspired by the poetic soul of art.

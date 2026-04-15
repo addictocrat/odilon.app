@@ -12,50 +12,52 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 🎯 Strategic Vision
 
-Our goal is to create a digital sanctuary for art that wins top-tier awards in:
+Our goal is to create a digital sanctuary for art and personal curators that wins top-tier awards in:
 
 - **Art**: For pushing the boundaries of how we interact with masterpieces.
+- **Odilon Compass**: A personalized multi-genre content discovery engine.
 - **Animated Website**: Only utilize `anime.js` or transitions IF explicitly requested in the user prompt. Do not add animations by default.
-- **Accessibility**: Ensuring a world-class experience for everyone, adhering to strict WCAG guidelines so that the "voice of art" is accessible to all.
+- **Accessibility**: Ensuring a world-class experience for everyone, adhering to strict WCAG guidelines.
 
 ## 🛠 Core Features & Architecture
 
 - **Persistent Painting Library**: A growing repository of artworks stored in the `paintings` table. Every new search (via ArtIC API) automatically syncs/upserts results to this local database.
-- **Masonry Grid UI**: The `/paintings` page implements a fluid, server-paginated (20 per page) masonry grid with client-side filtering (`LibraryFilters`).
-- **Dashboard Analytics**: Features a `ChatSidebar` for conversation history and a `RecentPaintings` carousel showing the last 8 unique paintings the user interacted with.
-- **Vercel AI SDK & OpenRouter**: Built with `@ai-sdk/react` and `@openrouter/ai-sdk-provider` for self-hosted, streaming conversations.
+- **Odilon Compass**: A content recommender engine where users save favorite media (Books, Movies, Games, etc.) and receive AI-curated journeys across specific formats.
+- **Masonry Grid UI**: The `/paintings` and `/compass/saved` pages implement fluid, server-paginated grids with client-side interaction.
+- **Dashboard Analytics**: Features a `ChatSidebar` for conversation history and a `RecentPaintings` carousel.
+- **Vercel AI SDK & OpenRouter**: Built with `@ai-sdk/react` and `@openrouter/ai-sdk-provider` for self-hosted, streaming conversations and content recommendations.
 - **Odilon Personality**: A poetic, soulful AI guide that blends art history expertise with concise, direct communication.
-- **Context-Aware Interactions**: Injects real-time artwork metadata (artist, medium, origin) into the system prompt to ground every conversation.
+- **Context-Aware Interactions**: Injects real-time artwork or user-preference metadata into the system prompt to ground every session.
 - **Component-Based UI**: A strictly enforced, modular UI structure for scalability and "pixel-perfect" execution.
 
 ## 🤖 AI Implementation & Personality
 
-Odilon's AI isn't just a chatbot; it's a "spirit of art" designed to make masterpieces approachable.
+Odilon's AI serves two primary roles: the "spirit of art" for paintings and the "soulful curator" for the Compass.
 
-### 🧠 Core Logic (`/api/chat`)
-- **Engine**: Vercel AI SDK `streamText` using OpenRouter as the provider.
-- **Primary Model**: `google/gemini-2.0-flash-001` (default).
-- **Context Injection**: 
-    - The `Chat` component sends the current `artwork` metadata in the POST body.
-    - The server dynamically constructs a `systemPrompt` that identifies the AI as the spirit of that specific painting.
+### 🧠 Core Logic
+
+- **Engine**: Vercel AI SDK using OpenRouter as the provider.
+- **Primary Model**: `google/gemini-2.0-flash-001` (default), configurable via `.env.local`.
+- **Context Injection**:
+  - **Art**: Sends `artwork` metadata to construct a system prompt identifying as the painting's spirit.
+  - **Compass**: Analyzes intersections of user's favorite content to suggest 9 new items across targeted formats with poetic "why" explanations.
 - **State Management**:
-    - Uses `useChat` hook for real-time streaming.
-    - Persists messages to the `chats` table via a background server action (`updateConversationMessages`) triggered on `onFinish`.
+  - Uses `useChat` for painting conversations.
+  - Uses structured server actions (`generateRecommendations`) for Compass discoveries.
 
 ## 🔐 Authentication & Security
 
-Odilon uses a **custom, stateless JWT-based authentication system** to maintain branding control and eliminate external provider dependencies.
+Odilon uses a **custom, stateless JWT-based authentication system**.
 
 - **Session Management**: Stateless JWT sessions stored in a secure `odilon_session` HttpOnly cookie.
 - **Library**: Uses `jose` for JWT signing/verification and `bcryptjs` for password hashing.
-- **Route Protection**: Managed via the Next.js 16 `proxy.ts` convention (successor to `middleware.ts`).
-- **Database Schema**: 
-    - `users`: Core profile data.
-    - `paintings`: Persistent mirror of ArtIC metadata; synced on-the-fly during search.
-    - `chats`: Conversation history and metadata.
-    - `email_verification_tokens`: Time-limited tokens for account activation.
-    - `password_reset_tokens`: Secure recovery flow tokens.
-- **Email Flows**: Transactional emails (Signup, Recovery) are handled via `nodemailer` using SMTP.
+- **Database Schema**:
+  - `users`: Core profile data.
+  - `paintings`: Local mirror of ArtIC metadata.
+  - `compass_contents`: User favorites and AI-suggested content across media types.
+  - `chats`: Conversation history.
+  - `email_verification_tokens` & `password_reset_tokens`: Secure workflow tokens.
+- **Email Flows**: Transactional emails handled via `nodemailer`.
 
 ## 🖋 Design Principles
 
@@ -68,6 +70,7 @@ Odilon uses a **custom, stateless JWT-based authentication system** to maintain 
 ## 🔡 Visual Identity & Brand Colors
 
 ### Brand Color Palette
+
 - **Backgrounds**: `#F6E6CB` (Page backgrounds, chat message backgrounds)
 - **Primary Text**: `#6B4F4F` (Sub texts, descriptions, paragraphs, text on darker backgrounds)
 - **Headings & Logo**: `#483434` (Logo, headings, titles, important texts, footer backgrounds)
@@ -75,7 +78,9 @@ Odilon uses a **custom, stateless JWT-based authentication system** to maintain 
 - **Accent**: `#B6C7AA` (Icons, links, SVGs, effects)
 
 ### Typography
+
 We use a curated selection of Google Fonts (Normal style only):
+
 - **Logo Font**: `Gloock` "odilon".
 - **Header & Title Font**: `Bree Serif`.
 - **Main Body & UI Font**: `Assistant`.
