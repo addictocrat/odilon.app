@@ -31,12 +31,16 @@ interface ArtworkChatClientProps {
   initialMessages: any[];
 }
 
-export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMessages }: ArtworkChatClientProps) {
+export function ArtworkChatClient({
+  chatId,
+  initialArtwork: artwork,
+  initialMessages,
+}: ArtworkChatClientProps) {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,19 +50,26 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    
+
     setIsLoading(true);
-    
+
     // Add message to UI immediately
-    setMessages([...messages, { id: `user-${Date.now()}`, role: "user", content: input }]);
-    
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: "user" as const,
+      content: input,
+    };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInput("");
+
     // Send to API with artwork and chatId in body
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
-        messages: [...messages, { role: "user", content: input }],
+        messages: updatedMessages,
         artwork,
         chatId,
       }),
@@ -72,14 +83,39 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
 
     const reader = response.body?.getReader();
     let assistantMessage = "";
+    let buffer = "";
 
     while (reader) {
       const { done, value } = await reader.read();
       if (done) break;
 
       const chunk = new TextDecoder().decode(value);
-      assistantMessage += chunk;
-      
+      buffer += chunk;
+
+      // Process complete lines from the buffer
+      const lines = buffer.split("\n");
+      // Keep the last partial line in the buffer
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+
+        const dataStr = trimmed.slice(6).trim();
+        if (dataStr === "[DONE]") continue;
+
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.type === "text-delta" && parsed.delta) {
+            assistantMessage += parsed.delta;
+          } else if (parsed.type === "text" && parsed.text) {
+            assistantMessage += parsed.text;
+          }
+        } catch (e) {
+          // Ignore incomplete JSON chunks or parsing errors
+        }
+      }
+
       // Update assistant message in real-time
       setMessages((prev) => {
         const lastMsg = prev[prev.length - 1];
@@ -91,13 +127,16 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
         } else {
           return [
             ...prev,
-            { id: `assistant-${Date.now()}`, role: "assistant", content: assistantMessage },
+            {
+              id: `assistant-${Date.now()}`,
+              role: "assistant",
+              content: assistantMessage,
+            },
           ];
         }
       });
     }
-    
-    setInput("");
+
     setIsLoading(false);
   };
 
@@ -108,10 +147,12 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
   return (
     <div className="flex h-screen bg-[#F6E6CB] overflow-hidden">
       {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 lg:relative lg:block transition-all duration-300 transform",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 lg:relative lg:block transition-all duration-300 transform",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
         <ChatSidebar />
       </div>
 
@@ -120,7 +161,7 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
         {/* Header */}
         <header className="p-4 md:p-6 flex items-center justify-between border-b border-[#483434]/10 bg-[#E7D4B5] z-10">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-[#483434]/5 rounded-sm lg:hidden"
             >
@@ -136,12 +177,14 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
             </div>
           </div>
 
-          <Link 
+          <Link
             href="/dashboard"
             className="flex items-center gap-2 text-[#483434]/60 hover:text-[#483434] transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-header text-[10px] uppercase tracking-widest hidden md:inline">Exit Chat</span>
+            <span className="font-header text-[10px] uppercase tracking-widest hidden md:inline">
+              Exit Chat
+            </span>
           </Link>
         </header>
 
@@ -149,33 +192,41 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
           {/* Left Side: Artwork Details (Desktop only) */}
           <aside className="hidden xl:flex flex-col w-80 p-8 border-r border-[#483434]/5 bg-[#E7D4B5]/10 overflow-y-auto scrollbar-hide">
             <div className="relative aspect-[3/4] w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
-               {artwork.image_id ? (
-                  <img
-                      src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
-                      alt={artwork.title}
-                      className="object-cover w-full h-full"
-                  />
-               ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#483434]/20 font-header uppercase tracking-tighter text-2xl">
-                      No Image
-                  </div>
-               )}
+              {artwork.image_id ? (
+                <img
+                  src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
+                  alt={artwork.title}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[#483434]/20 font-header uppercase tracking-tighter text-2xl">
+                  No Image
+                </div>
+              )}
             </div>
-            
+
             <div className="mt-8 space-y-6">
               <div>
-                <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">Details</h3>
-                <p className="font-body text-xs text-[#483434] font-medium leading-relaxed">{artwork.medium_display}</p>
-                <p className="font-body text-xs text-[#6B4F4F] mt-1">{artwork.date_display}, {artwork.place_of_origin}</p>
+                <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
+                  Details
+                </h3>
+                <p className="font-body text-xs text-[#483434] font-medium leading-relaxed">
+                  {artwork.medium_display}
+                </p>
+                <p className="font-body text-xs text-[#6B4F4F] mt-1">
+                  {artwork.date_display}, {artwork.place_of_origin}
+                </p>
               </div>
 
               {artwork.description && (
                 <div className="pt-4 border-t border-[#483434]/5">
-                   <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">About</h3>
-                   <div 
-                     className="font-body text-xs text-[#6B4F4F] leading-relaxed line-clamp-6 hover:line-clamp-none transition-all duration-500 cursor-pointer"
-                     dangerouslySetInnerHTML={{ __html: artwork.description }}
-                   />
+                  <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
+                    About
+                  </h3>
+                  <div
+                    className="font-body text-xs text-[#6B4F4F] leading-relaxed line-clamp-6 hover:line-clamp-none transition-all duration-500 cursor-pointer"
+                    dangerouslySetInnerHTML={{ __html: artwork.description }}
+                  />
                 </div>
               )}
             </div>
@@ -184,42 +235,55 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
           {/* Right Side: Chat Messages */}
           <div className="flex-1 flex flex-col bg-[#F6E6CB] relative">
             <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 space-y-8 scrollbar-hide">
-               {messages.map((m) => (
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={cn(
+                    "flex flex-col gap-2 max-w-[90%] md:max-w-[80%] animate-in fade-in slide-in-from-bottom-2 duration-700",
+                    m.role === "user"
+                      ? "ml-auto items-end"
+                      : "mr-auto items-start",
+                  )}
+                >
                   <div
-                      key={m.id}
-                      className={cn(
-                          "flex flex-col gap-2 max-w-[90%] md:max-w-[80%] animate-in fade-in slide-in-from-bottom-2 duration-700",
-                          m.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
-                      )}
+                    className={cn(
+                      "font-header text-[10px] uppercase tracking-[0.2em]",
+                      m.role === "user"
+                        ? "text-[#6B4F4F]/40"
+                        : "text-[#B6C7AA]",
+                    )}
                   >
-                      <div className={cn(
-                          "font-header text-[10px] uppercase tracking-[0.2em]",
-                          m.role === "user" ? "text-[#6B4F4F]/40" : "text-[#B6C7AA]"
-                      )}>
-                          {m.role === "user" ? "Inquirer" : "The Voice of Art"}
-                      </div>
-                      <div className={cn(
-                          "p-4 md:p-6 rounded-2xl text-sm md:text-[15px] leading-relaxed shadow-sm transition-all",
-                          m.role === "user" 
-                              ? "bg-[#E7D4B5] text-[#483434] border border-[#483434]/5" 
-                              : "bg-[#483434] text-[#F6E6CB] selection:bg-[#B6C7AA] selection:text-[#483434]"
-                      )}>
-                          <div className="whitespace-pre-wrap">{m.content}</div>
-                      </div>
+                    {m.role === "user" ? "Inquirer" : "The Voice of Art"}
                   </div>
-               ))}
-               {isLoading && (
-                  <div className="flex gap-3 items-center text-[#B6C7AA] animate-pulse">
-                      <Sparkles className="w-4 h-4" />
-                      <span className="font-header text-[10px] uppercase tracking-widest">Translating colors...</span>
+                  <div
+                    className={cn(
+                      "p-4 md:p-6 rounded-2xl text-sm md:text-[15px] leading-relaxed shadow-sm transition-all",
+                      m.role === "user"
+                        ? "bg-[#E7D4B5] text-[#483434] border border-[#483434]/5"
+                        : "bg-[#483434] text-[#F6E6CB] selection:bg-[#B6C7AA] selection:text-[#483434]",
+                    )}
+                  >
+                    <div className="whitespace-pre-wrap">{m.content}</div>
                   </div>
-               )}
-               <div ref={messagesEndRef} />
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex gap-3 items-center text-[#B6C7AA] animate-pulse">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="font-header text-[10px] uppercase tracking-widest">
+                    Translating colors...
+                  </span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Form */}
             <div className="p-4 md:p-8 border-t border-[#483434]/5 bg-gradient-to-t from-[#F6E6CB] to-transparent">
-              <form onSubmit={handleSubmit} className="relative group max-w-4xl mx-auto w-full">
+              <form
+                onSubmit={handleSubmit}
+                className="relative group max-w-4xl mx-auto w-full"
+              >
                 <input
                   value={input}
                   onChange={handleInputChange}
@@ -238,10 +302,10 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
           </div>
         </div>
       </div>
-      
+
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -249,4 +313,3 @@ export function ArtworkChatClient({ chatId, initialArtwork: artwork, initialMess
     </div>
   );
 }
-
