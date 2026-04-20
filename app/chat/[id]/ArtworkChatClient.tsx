@@ -117,6 +117,23 @@ export function ArtworkChatClient({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [selectedModel, setSelectedModel] = useState("mistralai/mistral-small-2603");
+  const [selectedProfile, setSelectedProfile] = useState("poetic");
+
+  const MODELS = [
+    { name: "Mistral Small 4", id: "mistralai/mistral-small-2603" },
+    { name: "Gemma 4 26B A4B", id: "google/gemma-4-26b-a4b-it" },
+    { name: "Qwen3.5-Flash", id: "qwen/qwen3.5-flash-02-23" },
+    { name: "Grok 4.1 Fast", id: "x-ai/grok-4.1-fast" },
+    { name: "GPT-5 Nano", id: "openai/gpt-5-nano" },
+  ];
+
+  const PROFILES = [
+    { name: "Poetic", id: "poetic" },
+    { name: "Precise", id: "precise" },
+    { name: "Artist", id: "artist" },
+    { name: "Curious", id: "curious" },
+  ];
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -147,6 +164,8 @@ export function ArtworkChatClient({
         messages: updatedMessages,
         artwork,
         chatId,
+        model: selectedModel,
+        profile: selectedProfile,
       }),
     });
 
@@ -276,6 +295,7 @@ export function ArtworkChatClient({
             </div>
 
             <div className="mt-8 space-y-6">
+
               <div>
                 <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
                   Details
@@ -299,6 +319,42 @@ export function ArtworkChatClient({
                   />
                 </div>
               )}
+
+              <div className="pt-8 mt-auto space-y-6">
+                <div>
+                  <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-3">
+                    Spirit Voice
+                  </h3>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full bg-[#483434]/5 text-[#483434] border border-[#483434]/10 rounded-xl px-4 py-3 font-header text-[11px] uppercase tracking-[0.1em] outline-none focus:ring-1 focus:ring-[#B6C7AA] cursor-pointer hover:bg-[#483434]/10 transition-all shadow-inner"
+                  >
+                    {MODELS.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#F6E6CB]">
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-3">
+                    Spirit Profile
+                  </h3>
+                  <select
+                    value={selectedProfile}
+                    onChange={(e) => setSelectedProfile(e.target.value)}
+                    className="w-full bg-[#483434]/5 text-[#483434] border border-[#483434]/10 rounded-xl px-4 py-3 font-header text-[11px] uppercase tracking-[0.1em] outline-none focus:ring-1 focus:ring-[#B6C7AA] cursor-pointer hover:bg-[#483434]/10 transition-all shadow-inner"
+                  >
+                    {PROFILES.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#F6E6CB]">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </aside>
 
