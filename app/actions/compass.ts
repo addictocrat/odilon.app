@@ -60,7 +60,7 @@ Return ONLY a JSON array:
     "title": "content title",
     "creator": "author or creator",
     "year": "release year",
-    "link": "url (youtube channel url for video and music, imdb for movie/tv, goodreads for book, steam for game, etc)",
+    "link": "url (youtube creator's channel url for video, spotify artist's url for music, imdb for movie/tv, goodreads for book, steam for game, etc)",
     "description": "short description",
     "why": "soulful explanation referencing the favorite items intersection",
     "tags": ["tag1", "tag2", "tag3"]
@@ -131,4 +131,44 @@ export async function deleteContent(id: string) {
     );
 
   revalidatePath("/compass/saved");
+}
+
+export async function updateContent(
+  id: string,
+  data: {
+    type: string;
+    title: string;
+    creator?: string;
+    year?: string;
+    link?: string;
+    description?: string;
+    why?: string;
+    tags?: string[];
+  },
+) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const [updatedContent] = await db
+    .update(compassContents)
+    .set({
+      type: data.type,
+      title: data.title,
+      creator: data.creator,
+      year: data.year,
+      link: data.link,
+      description: data.description,
+      why: data.why,
+      tags: data.tags,
+    })
+    .where(
+      and(
+        eq(compassContents.id, id),
+        eq(compassContents.userId, session.userId),
+      ),
+    )
+    .returning();
+
+  revalidatePath("/compass/saved");
+  return updatedContent;
 }

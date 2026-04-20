@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSavedContents, generateRecommendations, saveContent, deleteContent } from "@/app/actions/compass";
+import { getSavedContents, generateRecommendations, saveContent, deleteContent, updateContent } from "@/app/actions/compass";
 import { CompassContent } from "@/lib/db/schema";
 
 export const COMPASS_KEYS = {
@@ -56,6 +56,18 @@ export function useDeleteCompassContent() {
       }
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: COMPASS_KEYS.saved() });
+    },
+  });
+}
+
+export function useUpdateCompassContent() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateContent(id, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMPASS_KEYS.saved() });
     },
   });

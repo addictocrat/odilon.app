@@ -9,15 +9,18 @@ import {
   Calendar,
   User,
   Tag,
+  Pencil,
 } from "lucide-react";
 import { CompassContent } from "@/lib/db/schema";
 import { useDeleteCompassContent } from "@/hooks/queries/useCompass";
+import { AddContentModal } from "./AddContentModal";
 
 interface ContentCardProps {
   content: CompassContent;
   showDelete?: boolean;
   onSave?: (rec: any) => void;
   isRecommendation?: boolean;
+  isSaved?: boolean;
 }
 
 export function ContentCard({
@@ -25,8 +28,10 @@ export function ContentCard({
   showDelete,
   onSave,
   isRecommendation,
+  isSaved,
 }: ContentCardProps) {
   const deleteMutation = useDeleteCompassContent();
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to remove this from your favorites?")) {
@@ -58,24 +63,50 @@ export function ContentCard({
           )}
           {isRecommendation && onSave && (
             <button
-              onClick={() => onSave(content)}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-odilon-logo/5 text-odilon-logo/40 hover:text-odilon-logo hover:bg-odilon-logo/10 transition-all cursor-pointer"
-              title="Save to Universe"
+              onClick={() => !isSaved && onSave(content)}
+              disabled={isSaved}
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+                isSaved
+                  ? "bg-odilon-accent text-odilon-logo cursor-default"
+                  : "bg-odilon-logo/5 text-odilon-logo/40 hover:text-odilon-logo hover:bg-odilon-logo/10 cursor-pointer"
+              }`}
+              title={isSaved ? "Saved to Universe" : "Save to Universe"}
             >
-              <Bookmark className="w-3.5 h-3.5" />
+              <Bookmark
+                className={`w-3.5 h-3.5 ${isSaved ? "fill-current" : ""}`}
+              />
             </button>
           )}
         </div>
-        {showDelete && (
-          <button
-            onClick={handleDelete}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/5 text-odilon-logo/30 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
-            title="Remove from favorites"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex gap-1">
+          {showDelete && (
+            <>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-odilon-logo/5 text-odilon-logo/30 hover:text-odilon-logo hover:bg-odilon-logo/10 transition-all cursor-pointer"
+                title="Edit content"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/5 text-odilon-logo/30 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                title="Remove from favorites"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {showDelete && (
+        <AddContentModal
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          initialData={content}
+        />
+      )}
 
       <div className="space-y-1">
         <h3 className="font-header text-xl text-odilon-logo leading-tight">

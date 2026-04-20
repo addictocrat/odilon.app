@@ -69,6 +69,16 @@ export function RecommenderClient({
         ...rec,
         isSaved: true,
       });
+
+      // Update local state to show as saved
+      setRecommendations((prev) =>
+        prev.map((r) =>
+          r.title === rec.title && r.creator === rec.creator
+            ? { ...r, saved: true }
+            : r,
+        ),
+      );
+
       toast.success(`"${rec.title}" saved to your universe!`);
     } catch (err) {
       toast.error("Failed to save recommendation.");
@@ -231,6 +241,7 @@ export function RecommenderClient({
                 <ContentCard
                   content={rec as any}
                   isRecommendation
+                  isSaved={rec.saved}
                   onSave={handleSaveRec}
                 />
               </div>
