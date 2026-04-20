@@ -12,7 +12,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 🎯 Strategic Vision
 
-Our goal is to create a digital sanctuary for art and personal curators that wins top-tier awards in:
+Our goal is to create a digital sanctuary for art and personal curators:
 
 - **Art**: For pushing the boundaries of how we interact with masterpieces.
 - **Odilon Compass**: A personalized multi-genre content discovery engine.
@@ -23,7 +23,7 @@ Our goal is to create a digital sanctuary for art and personal curators that win
 
 - **Persistent Painting Library**: A growing repository of artworks stored in the `paintings` table. Every new search (via ArtIC API) automatically syncs/upserts results to this local database.
 - **Odilon Compass**: A content recommender engine where users save favorite media (Books, Movies, Games, etc.) and receive AI-curated journeys across specific formats.
-- **Masonry Grid UI**: The `/paintings` and `/compass/saved` pages implement fluid, server-paginated grids with client-side interaction.
+- **Masonry Grid UI**: The `/paintings` and `/compass/saved` pages implement fluid, infinite-scrolling grids powered by Tanstack Query for a seamless "uncovering" experience.
 - **Dashboard Analytics**: Features a `ChatSidebar` for conversation history and a `RecentPaintings` carousel.
 - **Vercel AI SDK & OpenRouter**: Built with `@ai-sdk/react` and `@openrouter/ai-sdk-provider` for self-hosted, streaming conversations and content recommendations.
 - **Odilon Personality**: A poetic, soulful AI guide that blends art history expertise with concise, direct communication.
@@ -42,8 +42,10 @@ Odilon's AI serves two primary roles: the "spirit of art" for paintings and the 
   - **Art**: Sends `artwork` metadata to construct a system prompt identifying as the painting's spirit.
   - **Compass**: Analyzes intersections of user's favorite content to suggest 9 new items across targeted formats with poetic "why" explanations.
 - **State Management**:
-  - Uses `useChat` for painting conversations.
-  - Uses structured server actions (`generateRecommendations`) for Compass discoveries.
+  - **Data Fetching**: Primarily managed via **Tanstack Query** (@tanstack/react-query). All interactive client-side fetching must reside in `hooks/queries/`.
+  - **Optimistic UI**: Standardized for all save/delete actions to ensure a premium, zero-latency feel.
+  - **Painting Chat**: Uses `useChat` from Vercel AI SDK for streaming conversations.
+  - **Legacy Actions**: Direct server actions are still used for initial SSR and non-query-based mutations (e.g., Auth).
 
 ## 🔐 Authentication & Security
 
@@ -94,4 +96,6 @@ We use a curated selection of Google Fonts (Normal style only):
 ## 📚 Documentation
 
 - **GSAP v3**: https://gsap.com/docs/v3/GSAP/
+- **Tanstack Query**: https://tanstack.com/query/latest/docs/framework/react/overview
 - **chatbot**: https://sdk.vercel.ai/docs/api-reference/use-chat
+

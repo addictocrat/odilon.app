@@ -11,7 +11,7 @@ import {
   Tag,
 } from "lucide-react";
 import { CompassContent } from "@/lib/db/schema";
-import { deleteContent } from "@/app/actions/compass";
+import { useDeleteCompassContent } from "@/hooks/queries/useCompass";
 
 interface ContentCardProps {
   content: CompassContent;
@@ -26,9 +26,15 @@ export function ContentCard({
   onSave,
   isRecommendation,
 }: ContentCardProps) {
+  const deleteMutation = useDeleteCompassContent();
+
   const handleDelete = async () => {
     if (confirm("Are you sure you want to remove this from your favorites?")) {
-      await deleteContent(content.id);
+      try {
+        await deleteMutation.mutateAsync(content.id);
+      } catch (err) {
+        // Error handling handled by mutation hook (rollback)
+      }
     }
   };
 

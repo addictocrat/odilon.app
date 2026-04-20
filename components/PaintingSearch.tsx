@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, Loader2, CornerDownLeft, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PAINTINGS } from "@/lib/paintings";
-import { createConversation } from "@/app/actions/chat";
 import { toast } from "sonner";
 
 interface Artwork {
@@ -20,6 +19,10 @@ interface PaintingSearchProps {
   placeholder?: string;
 }
 
+import { useAuth } from "@/hooks/queries/useAuth";
+import { useSearchArtworks } from "@/hooks/queries/usePaintings";
+import { useCreateConversation } from "@/hooks/queries/useChats";
+
 export function PaintingSearch({
   className = "",
   containerClassName = "",
@@ -27,30 +30,18 @@ export function PaintingSearch({
 }: PaintingSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Artwork[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const { data: isLoggedIn = null } = useAuth();
+  const searchMutation = useSearchArtworks();
+  const createMutation = useCreateConversation();
 
   const closedEyes = PAINTINGS.find((p) => p.id === "closed-eyes");
   const defaultPlaceholder = closedEyes
     ? `${closedEyes.title} - ${closedEyes.artist}`
     : "Talk to paintings...";
-
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const { isAuthenticated } = await import("@/app/actions/auth");
-        const authed = await isAuthenticated();
-        setIsLoggedIn(authed);
-      } catch (error) {
-        setIsLoggedIn(false);
-      }
-    };
-    checkAuthStatus();
-  }, []);
 
   const searchArtworks = async (searchTerm: string) => {
     if (!searchTerm.trim()) {
@@ -58,66 +49,36 @@ export function PaintingSearch({
       return;
     }
 
-    // Rate Limiting Logic
-    if (isLoggedIn === null) return; // Wait for auth check
+    if (isLoggedIn === null) return;
 
+    // Rate Limiting Logic (Simplified for brevity, but still functional)
     if (!isLoggedIn) {
-      // Guest Rate Limiting
-      const guestQueries = parseInt(
-        localStorage.getItem("odilon_guest_queries") || "0",
-      );
+      const guestQueries = parseInt(localStorage.getItem("odilon_guest_queries") || "0");
       if (guestQueries >= 3) {
-        toast.info(
-          "You've reached the guest limit. Join us to continue exploring.",
-          {
-            description: "Returning to registration...",
-          },
-        );
+        toast.info("You've reached the guest limit. Join us to continue exploring.");
         router.push("/signup");
         return;
       }
-      localStorage.setItem(
-        "odilon_guest_queries",
-        (guestQueries + 1).toString(),
-      );
+      localStorage.setItem("odilon_guest_queries", (guestQueries + 1).toString());
     } else {
-      // Logged-in User Rate Limiting: 10 queries per 120 seconds
       const now = Date.now();
-      const queryHistory = JSON.parse(
-        localStorage.getItem("odilon_user_query_history") || "[]",
-      );
-      const recentQueries = queryHistory.filter(
-        (timestamp: number) => now - timestamp < 120000,
-      );
-
+      const queryHistory = JSON.parse(localStorage.getItem("odilon_user_query_history") || "[]");
+      const recentQueries = queryHistory.filter((t: number) => now - t < 120000);
       if (recentQueries.length >= 10) {
-        toast.warning(
-          "You're moving fast! Take a moment to breathe with the art.",
-          {
-            description: "Limit: 10 searches every 2 minutes.",
-          },
-        );
+        toast.warning("You're moving fast! Take a moment to breathe with the art.");
         return;
       }
-
-      localStorage.setItem(
-        "odilon_user_query_history",
-        JSON.stringify([...recentQueries, now]),
-      );
+      localStorage.setItem("odilon_user_query_history", JSON.stringify([...recentQueries, now]));
     }
 
-    setIsLoading(true);
     try {
-      const { searchAndSyncArtworks } = await import("@/app/actions/paintings");
       const limit = isLoggedIn ? 10 : 4;
-      const data = await searchAndSyncArtworks(searchTerm, limit);
-      setResults(data || []);
+      const data = await searchMutation.mutateAsync({ query: searchTerm, limit });
+      setResults(data as Artwork[] || []);
       setIsOpen(true);
     } catch (error) {
       console.error("Error searching artworks:", error);
       toast.error("Failed to search artworks. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -134,9 +95,8 @@ export function PaintingSearch({
       return;
     }
 
-    setIsCreating(true);
     try {
-      const chatId = await createConversation(artwork);
+      const chatId = await createMutation.mutateAsync(artwork);
       setIsOpen(false);
       router.push(`/chat/${chatId}`);
     } catch (error: any) {
@@ -148,10 +108,11 @@ export function PaintingSearch({
       }
       console.error("Error creating conversation:", error);
       toast.error("Failed to start conversation. Please try again.");
-    } finally {
-      setIsCreating(false);
     }
   };
+
+  const isLoading = searchMutation.isPending;
+  const isCreating = createMutation.isPending;
 
   // Close dropdown on click outside
   useEffect(() => {

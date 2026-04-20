@@ -9,11 +9,15 @@ import { Compass, Stars, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CompassContent } from "@/lib/db/schema";
 
+import { useSavedCompassContents } from "@/hooks/queries/useCompass";
+
 export function SavedCompassClient({
   initialContents,
 }: {
   initialContents: CompassContent[];
 }) {
+  const { data: contents = initialContents } = useSavedCompassContents();
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl space-y-12">
       <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
@@ -51,7 +55,7 @@ export function SavedCompassClient({
         </div>
       </div>
 
-      {initialContents.length === 0 ? (
+      {contents.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-20 border border-dashed border-odilon-logo/10 rounded-sm space-y-6 bg-odilon-card/30">
           <Compass className="w-16 h-16 text-odilon-logo/10" />
           <div className="text-center space-y-2">
@@ -65,7 +69,7 @@ export function SavedCompassClient({
         </div>
       ) : (
         <GenericMasonryGrid
-          items={initialContents}
+          items={contents}
           renderItem={(content) => <ContentCard content={content} showDelete />}
           columns={{ default: 1, md: 2, lg: 4 }}
           className="w-full"

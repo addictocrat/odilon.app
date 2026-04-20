@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Chat, Painting } from "@/lib/db/schema";
-import { createConversation } from "@/app/actions/chat";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useChats, useCreateConversation } from "@/hooks/queries/useChats";
 
 interface RecentPaintingsProps {
   conversations: Chat[];
@@ -14,13 +14,11 @@ interface RecentPaintingsProps {
 }
 
 function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
-  const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
+  const createMutation = useCreateConversation();
 
   const handleStartChat = async () => {
-    setIsCreating(true);
     try {
-      // Convert Painting to artwork format expected by createConversation
       const artwork = {
         id: painting.id,
         title: painting.title,
@@ -28,15 +26,15 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
         image_id: painting.imageId,
         ...(painting.fullData as any),
       };
-      const chatId = await createConversation(artwork);
+      const chatId = await createMutation.mutateAsync(artwork);
       router.push(`/chat/${chatId}`);
     } catch (error) {
       console.error("Error starting chat:", error);
       toast.error("Failed to start conversation. Are you logged in?");
-    } finally {
-      setIsCreating(false);
     }
   };
+
+  const isCreating = createMutation.isPending;
 
   return (
     <button
@@ -64,9 +62,11 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
 }
 
 export function RecentPaintings({
-  conversations,
+  conversations: initialConversations,
   emptyStatePaintings = [],
 }: RecentPaintingsProps) {
+  const { data: conversations = initialConversations } = useChats(initialConversations);
+
   if (conversations.length === 0 && emptyStatePaintings.length === 0)
     return null;
 

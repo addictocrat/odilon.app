@@ -8,19 +8,15 @@ import { Chat } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 import { Sparkles, MessageSquare, Trash2 } from "lucide-react";
 
+import { useChats, useDeleteChat } from "@/hooks/queries/useChats";
+
 export function ChatSidebar() {
-  const [conversations, setConversations] = useState<Chat[]>([]);
   const router = useRouter();
   const params = useParams();
   const currentChatId = params.id as string;
 
-  useEffect(() => {
-    async function loadConversations() {
-      const data = await getConversations();
-      setConversations(data as Chat[]);
-    }
-    loadConversations();
-  }, [currentChatId]);
+  const { data: conversations = [], isLoading } = useChats();
+  const deleteMutation = useDeleteChat();
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
@@ -31,8 +27,7 @@ export function ChatSidebar() {
     }
 
     try {
-      await deleteConversation(id);
-      setConversations(conversations.filter((c) => c.id !== id));
+      await deleteMutation.mutateAsync(id);
       
       if (currentChatId === id) {
         router.push("/dashboard");
@@ -52,7 +47,19 @@ export function ChatSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {conversations.length === 0 ? (
+        {isLoading ? (
+          <div className="p-8 text-center space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 animate-pulse">
+                <div className="w-12 h-12 bg-[#483434]/5 rounded-sm" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-2 bg-[#483434]/5 rounded w-3/4" />
+                  <div className="h-2 bg-[#483434]/5 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : conversations.length === 0 ? (
           <div className="p-8 text-center space-y-2">
             <MessageSquare className="w-8 h-8 mx-auto text-[#483434]/20" />
             <p className="font-body text-xs text-[#483434]/40">No conversations yet.</p>

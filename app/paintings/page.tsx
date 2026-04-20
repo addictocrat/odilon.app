@@ -6,6 +6,7 @@ import { DashboardClient } from "@/app/dashboard/DashboardClient";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { LibraryFilters } from "@/components/LibraryFilters";
+import { LibraryClient } from "./LibraryClient";
 
 interface PaintingsPageProps {
   searchParams: Promise<{
@@ -60,39 +61,14 @@ export default async function PaintingsPage({ searchParams }: PaintingsPageProps
           </div>
         </header>
 
-        {/* Library Grid */}
+        {/* Library Grid & Infinite Scroll */}
         <div className="flex-1">
-          <MasonryGrid paintings={data.paintings} />
+          <LibraryClient 
+            query={query} 
+            artist={artist} 
+            initialData={data} 
+          />
         </div>
-
-        {/* Pagination */}
-        {data.totalPages > 1 && (
-          <footer className="px-4 md:px-8 lg:px-12 py-12 flex items-center justify-center gap-8">
-            <Link
-              href={`/paintings?query=${query}&artist=${artist}&page=${currentPage - 1}`}
-              className={cn(
-                "font-header text-xs uppercase tracking-[0.3em] transition-all",
-                currentPage <= 1 ? "opacity-20 pointer-events-none" : "text-odilon-logo/40 hover:text-odilon-logo"
-              )}
-            >
-              ← Previous Era
-            </Link>
-            
-            <div className="font-header text-[10px] uppercase tracking-widest text-odilon-logo/40">
-              Chapter {currentPage} of {data.totalPages}
-            </div>
-
-            <Link
-              href={`/paintings?query=${query}&artist=${artist}&page=${currentPage + 1}`}
-              className={cn(
-                "font-header text-xs uppercase tracking-[0.3em] transition-all",
-                currentPage >= data.totalPages ? "opacity-20 pointer-events-none" : "text-odilon-logo/40 hover:text-odilon-logo"
-              )}
-            >
-              Next Visions →
-            </Link>
-          </footer>
-        )}
       </div>
     </DashboardClient>
   );

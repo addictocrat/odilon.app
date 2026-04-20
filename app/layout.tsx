@@ -27,6 +27,8 @@ export const metadata: Metadata = {
     "Talk to paintings and explore the depths of art through interactive AI conversations.",
 };
 
+import { QueryProvider } from "@/components/providers/QueryProvider";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -40,8 +42,10 @@ export default async function RootLayout({
       <body
         className={`${gloock.variable} ${breeSerif.variable} ${assistant.variable} min-h-full flex flex-col`}
       >
-        <TopBanner isAuthenticated={isAuthenticated} />
-        {children}
+        <QueryProvider>
+          <TopBanner isAuthenticated={isAuthenticated} />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

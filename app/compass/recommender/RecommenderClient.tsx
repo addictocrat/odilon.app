@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { CompassContent } from "@/lib/db/schema";
-import { generateRecommendations, saveContent } from "@/app/actions/compass";
 import { ContentCard } from "@/components/CompassCard";
 import { GenericMasonryGrid } from "@/components/GenericMasonryGrid";
 import {
@@ -26,6 +25,9 @@ const CONTENT_TYPES = [
   "YouTube",
 ];
 
+import { useRecommendations, useSaveCompassContent } from "@/hooks/queries/useCompass";
+import { toast } from "sonner"; // Assuming sonner is used based on package.json
+
 export function RecommenderClient({
   initialSaved,
 }: {
@@ -34,8 +36,10 @@ export function RecommenderClient({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [targetTypes, setTargetTypes] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Select Favorites, 2: Select Types, 3: View Recs
+
+  const recMutation = useRecommendations(selectedIds, targetTypes);
+  const saveMutation = useSaveCompassContent();
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) =>
@@ -50,31 +54,28 @@ export function RecommenderClient({
   };
 
   const handleRecommend = async () => {
-    setLoading(true);
     try {
-      const recs = await generateRecommendations(selectedIds, targetTypes);
+      const recs = await recMutation.mutateAsync();
       setRecommendations(recs);
       setStep(3);
     } catch (err) {
-      alert(
-        "Failed to get recommendations. Please check your OpenRouter API key.",
-      );
-    } finally {
-      setLoading(false);
+      toast.error("Failed to get recommendations. Please check your OpenRouter API key.");
     }
   };
 
   const handleSaveRec = async (rec: any) => {
     try {
-      await saveContent({
+      await saveMutation.mutateAsync({
         ...rec,
         isSaved: true,
       });
-      alert(`"${rec.title}" saved to your universe!`);
+      toast.success(`"${rec.title}" saved to your universe!`);
     } catch (err) {
-      alert("Failed to save recommendation.");
+      toast.error("Failed to save recommendation.");
     }
   };
+
+  const loading = recMutation.isPending;
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-6xl space-y-12 min-h-[70vh]">

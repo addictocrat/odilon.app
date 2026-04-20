@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { Plus, X, Search, Loader2 } from "lucide-react";
-import { saveContent } from "@/app/actions/compass";
+import { useSaveCompassContent } from "@/hooks/queries/useCompass";
+import { toast } from "sonner";
 
 const CONTENT_TYPES = [
   "Book",
@@ -17,13 +18,10 @@ const CONTENT_TYPES = [
 
 export function AddContentModal({ onAdded }: { onAdded?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const saveMutation = useSaveCompassContent();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
 
     const formData = new FormData(e.currentTarget);
     const data = {
@@ -35,15 +33,16 @@ export function AddContentModal({ onAdded }: { onAdded?: () => void }) {
     };
 
     try {
-      await saveContent(data);
+      await saveMutation.mutateAsync(data);
       setIsOpen(false);
       onAdded?.();
+      toast.success(`"${data.title}" added to your universe.`);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+      toast.error("Failed to add content. Please try again.");
     }
   };
+
+  const loading = saveMutation.isPending;
 
   if (!isOpen) {
     return (
@@ -141,11 +140,6 @@ export function AddContentModal({ onAdded }: { onAdded?: () => void }) {
             />
           </div>
 
-          {error && (
-            <p className="text-red-500 text-xs font-header uppercase tracking-tighter">
-              {error}
-            </p>
-          )}
 
           <button
             type="submit"
