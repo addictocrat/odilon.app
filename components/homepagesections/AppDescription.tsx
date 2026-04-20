@@ -1,145 +1,119 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import Image from "next/image";
-import { animate, splitText, stagger } from "animejs";
-import { Star } from "lucide-react";
+import gsap from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { useGSAP } from "@gsap/react";
 import { useRouter } from "next/navigation";
 
 import { SocialProof } from "@/components/SocialProof";
 import { PAINTINGS, getPaintingPath } from "@/lib/paintings";
 
+gsap.registerPlugin(useGSAP, SplitText);
+
+// Trigger the entrance as soon as the section is noticeably visible, and
+// fully reset it once the user has scrolled completely away.
+const REVEAL_THRESHOLD = 0.15;
+const RESET_THRESHOLD = 0;
+
+// Words that get decorative styling baked into the split.
+const ACCENT_WORDS = new Set(["explores", "appreciates"]);
+const HIGHLIGHT_WORDS = new Set(["art"]);
+const BOLD_WORDS = new Set(["voice"]);
+
 export const AppDescription = ({ opacity }: { opacity: number }) => {
   const router = useRouter();
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const textRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInitialized = useRef(false);
+  const textRef = useRef<HTMLDivElement>(null);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const hasAnimatedRef = useRef(false);
 
   const closedEyes = PAINTINGS.find((p) => p.id === "closed-eyes");
 
-  useEffect(() => {
-    // splitText should only be run once to wrap words in spans
-    if (textRef.current && !isInitialized.current) {
-      const pElements = textRef.current.querySelectorAll("p");
-      pElements.forEach((p) => {
-        // In anime.js v4, the template must be passed via the 'words' property
-        splitText(p, {
-          words:
-            '<span class="word inline-block opacity-0 translate-y-6">{value}</span>',
-        });
+  useGSAP(
+    () => {
+      if (!textRef.current) return;
+
+      // Initialize SplitText for all paragraphs within the text container
+      const split = new SplitText(textRef.current.querySelectorAll("p"), {
+        type: "words",
+        wordsClass: "word inline-block will-change-transform opacity-0",
       });
 
-      // Inject the required styles into specific words directly
-      // This ensures the background animates exactly in sync with the word itself
-      const generatedWords = textRef.current.querySelectorAll(".word");
-      generatedWords.forEach((w) => {
-        if (w.textContent?.includes("explores")) {
-          w.classList.add("text-[#919F88]");
-        } else if (w.textContent?.includes("appreciates")) {
-          w.classList.add("text-[#919F88]");
-        } else if (w.textContent?.includes("art")) {
-          w.classList.add(
+      // Apply decorative styling to specific words post-split
+      split.words.forEach((word) => {
+        const bare =
+          word.textContent?.toLowerCase().replace(/[^a-z]/g, "") || "";
+        if (ACCENT_WORDS.has(bare)) {
+          word.classList.add("text-[#919F88]");
+        } else if (HIGHLIGHT_WORDS.has(bare)) {
+          word.classList.add(
             "bg-yellow-500",
             "px-2",
             "py-0",
             "rounded-lg",
             "font-bold",
           );
-        } else if (w.textContent?.includes("voice")) {
-          w.classList.add("font-bold");
+        } else if (BOLD_WORDS.has(bare)) {
+          word.classList.add("font-bold");
         }
       });
 
-      isInitialized.current = true;
-    }
-  }, []);
+      // Assemble the entrance sequence into a clean timeline
+      const tl = gsap.timeline({ paused: true });
 
-  useEffect(() => {
-    // Trigger animation when the section becomes significantly visible
-    if (opacity > 0.15 && !hasAnimated) {
-      setHasAnimated(true);
+      tl.fromTo(
+        split.words,
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "power4.out", stagger: 0.03 },
+      )
+        .fromTo(
+          ".chat-bubble",
+          { opacity: 0, scale: 0.8, y: 20 },
+          {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            duration: 1.4,
+            ease: "elastic.out(1, 0.8)",
+            stagger: 0.4,
+          },
+          "-=0.4",
+        )
+        .fromTo(
+          ".get-started-btn",
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" },
+          "-=1.2",
+        )
+        .fromTo(
+          ".review-badge",
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" },
+          "-=1.0",
+        );
 
-      const words = textRef.current?.querySelectorAll(".word");
-      if (words && words.length > 0) {
-        animate(words, {
-          opacity: [0, 1],
-          translateY: [24, 0],
-          duration: 800,
-          delay: stagger(30),
-          easing: "easeOutQuart",
-        });
+      tlRef.current = tl;
+    },
+    { scope: containerRef },
+  );
+
+  // Sync timeline state with parent-driven opacity
+  useGSAP(
+    () => {
+      if (!tlRef.current) return;
+
+      if (opacity > REVEAL_THRESHOLD && !hasAnimatedRef.current) {
+        hasAnimatedRef.current = true;
+        tlRef.current.play();
+      } else if (opacity <= RESET_THRESHOLD && hasAnimatedRef.current) {
+        hasAnimatedRef.current = false;
+        tlRef.current.pause(0);
       }
-
-      // Animate the chat bubbles with a bouncy reveal
-      const bubbles = containerRef.current?.querySelectorAll(".chat-bubble");
-      if (bubbles && bubbles.length > 0) {
-        animate(bubbles, {
-          opacity: [0, 1],
-          scale: [0.8, 1],
-          translateY: [20, 0],
-          duration: 1400,
-          delay: stagger(400, { start: 600 }),
-          easing: "easeOutElastic(1, .8)",
-        });
-      }
-
-      // Animate the button
-      const getStartedBtn =
-        containerRef.current?.querySelector(".get-started-btn");
-      if (getStartedBtn) {
-        animate(getStartedBtn, {
-          opacity: [0, 1],
-          translateY: [20, 0],
-          duration: 800,
-          delay: 0,
-          easing: "easeOutQuart",
-        });
-      }
-
-      // Animate the review badge
-      const reviewBadge = containerRef.current?.querySelector(".review-badge");
-      if (reviewBadge) {
-        animate(reviewBadge, {
-          opacity: [0, 1],
-          translateY: [20, 0],
-          duration: 800,
-          delay: 200,
-          easing: "easeOutQuart",
-        });
-      }
-    }
-    // Reset state when user scrolls completely away
-    else if (opacity === 0 && hasAnimated) {
-      setHasAnimated(false);
-
-      const words = textRef.current?.querySelectorAll(".word");
-      if (words) {
-        animate(words, { opacity: 0, translateY: 24, duration: 0 });
-      }
-
-      const bubbles = containerRef.current?.querySelectorAll(".chat-bubble");
-      if (bubbles) {
-        animate(bubbles, {
-          opacity: 0,
-          scale: 0.8,
-          translateY: 20,
-          duration: 0,
-        });
-      }
-
-      const getStartedBtn =
-        containerRef.current?.querySelector(".get-started-btn");
-      if (getStartedBtn) {
-        animate(getStartedBtn, { opacity: 0, translateY: 20, duration: 0 });
-      }
-
-      const reviewBadge = containerRef.current?.querySelector(".review-badge");
-      if (reviewBadge) {
-        animate(reviewBadge, { opacity: 0, translateY: 20, duration: 0 });
-      }
-    }
-  }, [opacity, hasAnimated]);
+    },
+    { dependencies: [opacity], scope: containerRef },
+  );
 
   return (
     <div
@@ -152,9 +126,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
         <div className="relative w-[55%] md:w-[70%] max-h-[75vh] mx-auto">
           {/* Chat Message 1 */}
           <div className="chat-bubble absolute -top-6 -left-4 md:-top-10 md:-left-10 bg-odilon-logo text-[#d3ddcc] p-4 md:p-6 rounded-2xl shadow-2xl max-w-[200px] md:max-w-[280px] font-header text-sm md:text-xl z-20 transform -rotate-2 opacity-0">
-            "Odilon Redon creates a bridge between our reality and hidden
-            dreams."
-            {/* Bubble Tail */}
+            "Odilon Redon creates a bridge between our reality and hidden dreams."
             <div className="absolute -bottom-2 left-8 w-4 h-4 bg-odilon-logo rotate-45" />
           </div>
 
@@ -175,7 +147,6 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
           {/* Chat Message 2 */}
           <div className="chat-bubble absolute -bottom-6 -right-4 md:-bottom-10 md:-right-10 bg-odilon-logo text-[#d3ddcc] p-4 md:p-6 rounded-2xl shadow-2xl max-w-[200px] md:max-w-[280px] font-header text-sm md:text-xl z-20 transform rotate-2 opacity-0">
             "The closed eyes invite us to look within our own spirits."
-            {/* Bubble Tail */}
             <div className="absolute -top-2 right-8 w-4 h-4 bg-odilon-logo rotate-45" />
           </div>
         </div>
@@ -186,7 +157,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
             ref={textRef}
             className="space-y-3 md:space-y-6 flex flex-col items-center md:items-start"
           >
-            <div className="hidden md:block font-logo text-lg md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-2 md:border-b-4 border-[#919F88] font-bold w-fit ">
+            <div className="hidden md:block font-logo text-lg md:text-2xl lg:text-3xl text-odilon-heading leading-[1.15] tracking-tight border-b-2 md:border-b-4 border-[#919F88] font-bold w-fit">
               odilon
             </div>
             <p className="font-header text-3xl md:text-5xl lg:text-6xl text-odilon-heading leading-[1.15] tracking-tight">
@@ -198,11 +169,11 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
             <div className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
               <button
                 onClick={() => router.push("/signup")}
-                className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0 translate-y-5 "
+                className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0"
               >
                 Join now
               </button>
-              <SocialProof className="opacity-0 translate-y-4" />
+              <SocialProof className="opacity-0" />
             </div>
           </div>
         </div>

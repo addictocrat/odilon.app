@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { animate } from "animejs";
-import { useScrollStore } from "@/hooks/useScrollStore";
+import { useState, useEffect, useRef } from "react";
+import gsap from "gsap";
 import { Sparkle } from "lucide-react";
+import { useGSAP } from "@gsap/react";
 
+import { useScrollStore } from "@/hooks/useScrollStore";
 import { PAINTINGS, getPaintingPath } from "@/lib/paintings";
 
-// Pre-calculate even distribution that avoids the center logo
+gsap.registerPlugin(useGSAP);
+
+// Pre-calculated grid spots that avoid the center logo area.
 const gridSpots = [
   { x: 12, y: 18, mobileHidden: true },
   { x: 32, y: 18 },
@@ -24,7 +27,7 @@ const gridSpots = [
 const paintingConfigs = PAINTINGS.map((p, i) => {
   const spot = gridSpots[i % gridSpots.length];
 
-  // Add deterministic jitter to keep it organic but stable
+  // Deterministic jitter keeps the grid organic-looking but stable across renders.
   const top = spot.y + Math.sin(i * 1.5) * 4;
   const left = spot.x + Math.cos(i * 2.2) * 5;
 
@@ -32,22 +35,36 @@ const paintingConfigs = PAINTINGS.map((p, i) => {
     src: p.src,
     top: `${top}%`,
     left: `${left}%`,
-    depth: 0.15 + (i % 4) * 0.15, // slightly more pronounced parallax
-    scale: 0.28 + (i % 3) * 0.08, // slightly smaller to ensure no overlap
-    rotation: (i % 6) * 12 - 30, // varied elegant tilts
+    depth: 0.15 + (i % 4) * 0.15, // deeper values = larger parallax amplitude
+    scale: 0.28 + (i % 3) * 0.08,
+    rotation: (i % 6) * 12 - 30,
     alt: `${p.title} - ${p.artist}`,
-    mobileHidden: (spot as any).mobileHidden || false,
+    mobileHidden: (spot as { mobileHidden?: boolean }).mobileHidden ?? false,
   };
 });
 
+// Time the sparkle spends stationary on each painting before it moves on.
+const SPARKLE_DWELL_MS = 4000;
+// Fade-out window before the sparkle starts travelling to the next spot.
+const SPARKLE_FADE_MS = 400;
+// Travel animation length (matches the fade-in that follows).
+const SPARKLE_TRAVEL_MS = 1000;
+
 export const PaintingGallery = () => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const paintingRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const scrollRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const sparkleRef = useRef<HTMLDivElement | null>(null);
+  // Refs for the parallax layers: outer for scroll, inner for mouse tilt.
+  const paintingMouseRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const paintingScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // The sparkle has three nested wrappers — one per transform source
+  // (position, scroll parallax, mouse parallax) so they don't fight.
+  const sparklePositionRef = useRef<HTMLDivElement | null>(null);
   const sparkleScrollRef = useRef<HTMLDivElement | null>(null);
   const sparkleMouseRef = useRef<HTMLDivElement | null>(null);
+
+  // Proxy object that GSAP tweens — a render loop syncs it onto the DOM.
   const sparkleProxy = useRef({
     x: parseFloat(paintingConfigs[0].left),
     y: parseFloat(paintingConfigs[0].top),
@@ -60,200 +77,191 @@ export const PaintingGallery = () => {
 
   const [isMobile, setIsMobile] = useState(false);
 
+  // Handle mobile detection and preloading
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
+
+    let loadedCount = 0;
+    PAINTINGS.forEach((p) => {
+      const img = new Image();
+      img.src = getPaintingPath(p.src);
+      const done = () => {
+        loadedCount++;
+        if (loadedCount === PAINTINGS.length) setIsLoaded(true);
+      };
+      img.onload = done;
+      img.onerror = done;
+    });
+
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    let travelAnim: ReturnType<typeof animate> | null = null;
-    let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+  // Mouse-driven parallax
+  useGSAP(
+    () => {
+      const handleMouseMove = (e: MouseEvent) => {
+        const { clientX, clientY } = e;
+        const { innerWidth, innerHeight } = window;
 
-    const goToNext = () => {
-      if (!active) return;
+        const centerX = innerWidth / 2;
+        const centerY = innerHeight / 2;
+        const mouseX = (clientX - centerX) / centerX; // -1..1
+        const mouseY = (clientY - centerY) / centerY; // -1..1
 
-      const currentIdx = activeIndexRef.current;
-      let nextIdx = (currentIdx + 1) % paintingConfigs.length;
+        paintingMouseRefs.current.forEach((el, i) => {
+          if (!el) return;
+          const { depth } = paintingConfigs[i];
+          gsap.to(el, {
+            x: mouseX * 100 * depth,
+            y: mouseY * 100 * depth,
+            rotationX: mouseY * -10 * depth,
+            rotationY: mouseX * 10 * depth,
+            duration: 0.8,
+            ease: "power2.out",
+            overwrite: "auto",
+          });
+        });
 
-      // Skip hidden paintings on mobile
-      if (isMobile) {
-        let attempts = 0;
-        while (
-          paintingConfigs[nextIdx].mobileHidden &&
-          attempts < paintingConfigs.length
-        ) {
-          nextIdx = (nextIdx + 1) % paintingConfigs.length;
-          attempts++;
+        if (sparkleMouseRef.current) {
+          const depth = sparkleProxy.current.depth;
+          gsap.to(sparkleMouseRef.current, {
+            x: mouseX * 100 * depth,
+            y: mouseY * 100 * depth,
+            rotationX: mouseY * -10 * depth,
+            rotationY: mouseX * 10 * depth,
+            duration: 0.8,
+            ease: "power2.out",
+            overwrite: "auto",
+          });
         }
-      }
+      };
 
-      const nextConfig = paintingConfigs[nextIdx];
+      window.addEventListener("mousemove", handleMouseMove);
+      return () => window.removeEventListener("mousemove", handleMouseMove);
+    },
+    { scope: containerRef },
+  );
 
-      // 1. Fade out the box — content stays, only visibility changes
-      setIsVisible(false);
+  // Scroll-driven parallax
+  useGSAP(
+    () => {
+      const unsubscribeScroll = useScrollStore.subscribe((state) => {
+        const smoothedY = state.smoothedY;
 
-      // 2. Wait 500ms for CSS fade-out to finish, then start travel
-      pauseTimer = setTimeout(() => {
+        paintingScrollRefs.current.forEach((el, i) => {
+          if (!el) return;
+          const { depth } = paintingConfigs[i];
+          const speed = 0.5 + depth * 2;
+          el.style.transform = `translateY(${-smoothedY * speed}px)`;
+        });
+
+        if (sparkleScrollRef.current) {
+          const depth = sparkleProxy.current.depth;
+          const speed = 0.5 + depth * 2;
+          sparkleScrollRef.current.style.transform = `translateY(${-smoothedY * speed}px)`;
+        }
+      });
+
+      return () => unsubscribeScroll();
+    },
+    { scope: containerRef },
+  );
+
+  // Sparkle travel cycle
+  useGSAP(
+    () => {
+      let active = true;
+      let travelTween: gsap.core.Tween | null = null;
+      let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const goToNext = () => {
         if (!active) return;
 
-        // 3. Animate the sparkle proxy to the next position
-        travelAnim = animate(sparkleProxy.current, {
-          x: parseFloat(nextConfig.left),
-          y: parseFloat(nextConfig.top),
-          depth: nextConfig.depth,
-          duration: 1000,
-          easing: "easeInOutExpo",
-        });
+        const currentIdx = activeIndexRef.current;
+        let nextIdx = (currentIdx + 1) % paintingConfigs.length;
 
-        // 4. After travel completes, swap content and fade in
+        if (isMobile) {
+          let attempts = 0;
+          while (
+            paintingConfigs[nextIdx].mobileHidden &&
+            attempts < paintingConfigs.length
+          ) {
+            nextIdx = (nextIdx + 1) % paintingConfigs.length;
+            attempts++;
+          }
+        }
+
+        const nextConfig = paintingConfigs[nextIdx];
+        setIsVisible(false);
+
         pauseTimer = setTimeout(() => {
           if (!active) return;
-          activeIndexRef.current = nextIdx;
-          setActiveIndex(nextIdx);
-          setIsVisible(true);
 
-          // 5. Box is visible — schedule next departure after 2.5s
-          pauseTimer = setTimeout(goToNext, 4000);
-        }, 1000); // exactly matches travel duration
-      }, 400); // matches CSS transition-all duration-500
-    };
+          travelTween = gsap.to(sparkleProxy.current, {
+            x: parseFloat(nextConfig.left),
+            y: parseFloat(nextConfig.top),
+            depth: nextConfig.depth,
+            duration: SPARKLE_TRAVEL_MS / 1000,
+            ease: "expo.inOut",
+          });
 
-    // Start the loop: show first painting, begin cycling after 5s
-    let initialIdx = 0;
-    if (isMobile && paintingConfigs[0].mobileHidden) {
-      initialIdx = paintingConfigs.findIndex((p) => !p.mobileHidden);
-      if (initialIdx === -1) initialIdx = 0;
-    }
+          pauseTimer = setTimeout(() => {
+            if (!active) return;
+            activeIndexRef.current = nextIdx;
+            setActiveIndex(nextIdx);
+            setIsVisible(true);
+            pauseTimer = setTimeout(goToNext, SPARKLE_DWELL_MS);
+          }, SPARKLE_TRAVEL_MS);
+        }, SPARKLE_FADE_MS);
+      };
 
-    setActiveIndex(initialIdx);
-    setIsVisible(true);
-    activeIndexRef.current = initialIdx;
-
-    // Sync initial sparkle position
-    sparkleProxy.current = {
-      x: parseFloat(paintingConfigs[initialIdx].left),
-      y: parseFloat(paintingConfigs[initialIdx].top),
-      depth: paintingConfigs[initialIdx].depth,
-    };
-
-    pauseTimer = setTimeout(goToNext, 2500);
-
-    // Render loop: sync sparkle DOM position from proxy
-    const renderLoop = () => {
-      if (!active) return;
-      if (sparkleRef.current) {
-        sparkleRef.current.style.left = `${sparkleProxy.current.x}%`;
-        sparkleRef.current.style.top = `${sparkleProxy.current.y}%`;
+      // Initialization logic
+      let initialIdx = 0;
+      if (isMobile && paintingConfigs[0].mobileHidden) {
+        initialIdx = paintingConfigs.findIndex((p) => !p.mobileHidden);
+        if (initialIdx === -1) initialIdx = 0;
       }
-      requestAnimationFrame(renderLoop);
-    };
-    renderLoop();
 
-    // Preload all images
-    let loadedCount = 0;
-    const preloadImages = () => {
-      PAINTINGS.forEach((p) => {
-        const img = new Image();
-        img.src = getPaintingPath(p.src);
-        img.onload = () => {
-          loadedCount++;
-          if (loadedCount === PAINTINGS.length) {
-            setIsLoaded(true);
-          }
-        };
-        img.onerror = () => {
-          loadedCount++;
-          if (loadedCount === PAINTINGS.length) {
-            setIsLoaded(true);
-          }
-        };
-      });
-    };
+      setActiveIndex(initialIdx);
+      setIsVisible(true);
+      activeIndexRef.current = initialIdx;
 
-    preloadImages();
+      sparkleProxy.current = {
+        x: parseFloat(paintingConfigs[initialIdx].left),
+        y: parseFloat(paintingConfigs[initialIdx].top),
+        depth: paintingConfigs[initialIdx].depth,
+      };
 
-    // Mouse movement logic
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      const { clientX, clientY } = e;
-      const { innerWidth, innerHeight } = window;
+      pauseTimer = setTimeout(goToNext, 2500);
 
-      const centerX = innerWidth / 2;
-      const centerY = innerHeight / 2;
+      const renderLoop = () => {
+        if (!active) return;
+        if (sparklePositionRef.current) {
+          sparklePositionRef.current.style.left = `${sparkleProxy.current.x}%`;
+          sparklePositionRef.current.style.top = `${sparkleProxy.current.y}%`;
+        }
+        rafId = requestAnimationFrame(renderLoop);
+      };
+      let rafId = requestAnimationFrame(renderLoop);
 
-      const mouseX = (clientX - centerX) / centerX; // -1 to 1
-      const mouseY = (clientY - centerY) / centerY; // -1 to 1
-
-      paintingRefs.current.forEach((ref, i) => {
-        if (!ref) return;
-        const config = paintingConfigs[i];
-
-        const xMove = mouseX * 100 * config.depth;
-        const yMove = mouseY * 100 * config.depth;
-        const rotateX = mouseY * -10 * config.depth;
-        const rotateY = mouseX * 10 * config.depth;
-
-        animate(ref, {
-          translateX: xMove,
-          translateY: yMove,
-          rotateX: rotateX,
-          rotateY: rotateY,
-          duration: 800,
-          easing: "easeOutQuad",
-        });
-      });
-
-      if (sparkleMouseRef.current) {
-        const depth = sparkleProxy.current.depth;
-        animate(sparkleMouseRef.current, {
-          translateX: mouseX * 100 * depth,
-          translateY: mouseY * 100 * depth,
-          rotateX: mouseY * -10 * depth,
-          rotateY: mouseX * 10 * depth,
-          duration: 800,
-          easing: "easeOutQuad",
-        });
-      }
-    };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-
-    // Subscribe to smooth scroll updates
-    const unsubscribeScroll = useScrollStore.subscribe((state) => {
-      const smoothedY = state.smoothedY;
-      scrollRefs.current.forEach((ref, i) => {
-        if (!ref) return;
-        const config = paintingConfigs[i];
-
-        // Items with higher depth (closer) will ascend faster
-        const scrollSpeedMultiplier = 0.5 + config.depth * 2;
-        const yOffset = -smoothedY * scrollSpeedMultiplier;
-
-        ref.style.transform = `translateY(${yOffset}px)`;
-      });
-
-      if (sparkleScrollRef.current) {
-        const depth = sparkleProxy.current.depth;
-        const scrollSpeedMultiplier = 0.5 + depth * 2;
-        const yOffset = -smoothedY * scrollSpeedMultiplier;
-        sparkleScrollRef.current.style.transform = `translateY(${yOffset}px)`;
-      }
-    });
-
-    return () => {
-      active = false;
-      if (travelAnim) travelAnim.pause();
-      if (pauseTimer) clearTimeout(pauseTimer);
-      window.removeEventListener("mousemove", handleGlobalMouseMove);
-      unsubscribeScroll();
-    };
-  }, []);
+      return () => {
+        active = false;
+        travelTween?.kill();
+        if (pauseTimer) clearTimeout(pauseTimer);
+        cancelAnimationFrame(rafId);
+      };
+    },
+    { dependencies: [isMobile], scope: containerRef },
+  );
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-      {/* Invisible connecting lines as trajectory */}
+    <div
+      ref={containerRef}
+      className="absolute inset-0 f z-0 pointer-events-none overflow-hidden"
+    >
+      {/* Invisible trajectory */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none z-0"
         viewBox="0 0 100 100"
@@ -278,10 +286,12 @@ export const PaintingGallery = () => {
         />
       </svg>
 
-      {/* The Sparkle Element */}
+      {/* The Sparkle */}
       <div
-        ref={sparkleRef}
-        className={`absolute z-50 pointer-events-none transition-opacity duration-500 ${isMobile ? "opacity-0 invisible" : "opacity-100 visible"}`}
+        ref={sparklePositionRef}
+        className={`absolute z-50 pointer-events-none transition-opacity duration-500 ${
+          isMobile ? "opacity-0 invisible" : "opacity-100 visible"
+        }`}
         style={{
           left: `${sparkleProxy.current.x}%`,
           top: `${sparkleProxy.current.y}%`,
@@ -294,25 +304,22 @@ export const PaintingGallery = () => {
               <Sparkle className="w-6 h-6 animate-pulse text-[#B6C7AA] fill-[#B6C7AA]/30" />
             </div>
 
-            {/* Analysis & Message Box — flips left when near right edge */}
+            {/* Message box */}
             {(() => {
               const isRightEdge =
                 parseFloat(paintingConfigs[activeIndex].left) > 65;
-              const posClass = isRightEdge
-                ? "right-12" // box appears to the LEFT of the sparkle
-                : "left-12"; // box appears to the RIGHT of the sparkle
+              const posClass = isRightEdge ? "right-12" : "left-12";
               const slideClass = isVisible
                 ? "opacity-100 translate-x-0"
                 : isRightEdge
-                  ? "opacity-0 translate-x-4" // fades out toward right
-                  : "opacity-0 -translate-x-4"; // fades out toward left
+                  ? "opacity-0 translate-x-4"
+                  : "opacity-0 -translate-x-4";
               return (
                 <div
                   className={`absolute ${posClass} rounded-lg top-1/2 -translate-y-1/2 z-[100] w-72 p-2 px-3 bg-odilon-logo shadow-2xl transition-all duration-500 pointer-events-none text-[#d3ddcc] font-sans ${slideClass}`}
                 >
                   {PAINTINGS[activeIndex] && (
                     <div className="flex flex-col gap-2">
-                      {/* <div className="h-px w-full bg-[#483434]/10" /> */}
                       <div>
                         <p className="text-sm leading-relaxed">
                           {PAINTINGS[activeIndex].message}
@@ -332,7 +339,11 @@ export const PaintingGallery = () => {
           key={config.src}
           role="img"
           aria-label={config.alt}
-          className={`absolute transition-opacity duration-500 ${isMobile && config.mobileHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+          className={`absolute transition-opacity duration-500 ${
+            isMobile && config.mobileHidden
+              ? "opacity-0 pointer-events-none"
+              : "opacity-100"
+          }`}
           style={{
             top: config.top,
             left: config.left,
@@ -340,13 +351,13 @@ export const PaintingGallery = () => {
             visibility: isMobile && config.mobileHidden ? "hidden" : "visible",
           }}
         >
-          {/* Scroll Control Wrapper */}
+          {/* Scroll parallax wrapper */}
           <div
             ref={(el) => {
-              scrollRefs.current[i] = el;
+              paintingScrollRefs.current[i] = el;
             }}
           >
-            {/* Idle Float Wrapper using flaw-free native CSS animation isolated to each piece */}
+            {/* Idle float */}
             <div
               style={{
                 animation: `float-anim-${i} ${3.5 + config.depth * 3}s ease-in-out infinite alternate`,
@@ -358,10 +369,10 @@ export const PaintingGallery = () => {
                   100% { transform: translateY(${8 + config.depth * 10}px) rotateZ(${1 + config.depth * 2}deg); }
                 }
               `}</style>
-              {/* Mouse Control Wrapper */}
+              {/* Mouse parallax wrapper */}
               <div
                 ref={(el) => {
-                  paintingRefs.current[i] = el;
+                  paintingMouseRefs.current[i] = el;
                 }}
                 className={`transition-opacity duration-1000 ${isLoaded ? "opacity-100" : "opacity-0"}`}
                 style={{
@@ -385,7 +396,6 @@ export const PaintingGallery = () => {
                       backgroundPosition: "center",
                     }}
                   >
-                    {/* Grain and Texture Overlay */}
                     <div className="absolute inset-0 bg-black/5 mix-blend-multiply opacity-20" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/5" />
                   </div>

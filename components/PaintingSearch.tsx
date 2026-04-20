@@ -205,7 +205,13 @@ export function PaintingSearch({
 
       {/* Results Dropdown */}
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-odilon-logo/10 rounded-lg shadow-2xl z-[999] overflow-hidden overflow-y-auto max-h-80 md:max-h-96 lg:max-h-[30rem] scrollbar-thin scrollbar-thumb-odilon-logo/10 divide-y divide-odilon-logo/5 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div 
+          onWheel={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-odilon-logo/10 rounded-lg shadow-2xl z-[999] overflow-hidden overflow-y-auto max-h-80 md:max-h-96 lg:max-h-[30rem] scrollbar-thin scrollbar-thumb-odilon-logo/10 divide-y divide-odilon-logo/5 animate-in fade-in slide-in-from-top-2 duration-300"
+        >
           {results.map((artwork) => (
             <button
               key={artwork.id}

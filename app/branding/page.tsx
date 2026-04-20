@@ -253,9 +253,9 @@ function IconSwatch({ Icon, name }: { Icon: any; name: string }) {
   return (
     <div className="space-y-3 flex flex-col items-center group">
       <div className="aspect-square w-full rounded-2xl bg-odilon-card/20 flex flex-col items-center justify-center transition-all duration-500 group-hover:bg-odilon-card/40 group-hover:scale-105 border border-black/[0.03]">
-        <Icon className="w-8 h-8 text-odilon-heading" />
+        <Icon className="w-12 h-12 text-odilon-heading" />
       </div>
-      <span className="font-body text-[10px] font-bold uppercase tracking-widest text-black/40">{name}</span>
+      <span className="font-body text-xs font-bold uppercase tracking-widest text-black/40">{name}</span>
     </div>
   );
 }

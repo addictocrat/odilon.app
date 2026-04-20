@@ -16,7 +16,7 @@ Our goal is to create a digital sanctuary for art and personal curators that win
 
 - **Art**: For pushing the boundaries of how we interact with masterpieces.
 - **Odilon Compass**: A personalized multi-genre content discovery engine.
-- **Animated Website**: Only utilize `anime.js` or transitions IF explicitly requested in the user prompt. Do not add animations by default.
+- **Animated Website**: Only utilize `gsap` or transitions IF explicitly requested in the user prompt. Do not add animations by default.
 - **Accessibility**: Ensuring a world-class experience for everyone, adhering to strict WCAG guidelines.
 
 ## 🛠 Core Features & Architecture
@@ -93,5 +93,5 @@ We use a curated selection of Google Fonts (Normal style only):
 
 ## 📚 Documentation
 
-- **anime.js**: https://animejs.com/documentation/
+- **GSAP v3**: https://gsap.com/docs/v3/GSAP/
 - **chatbot**: https://sdk.vercel.ai/docs/api-reference/use-chat
