@@ -11,18 +11,26 @@ import {
   X,
   ChevronRight,
   ArrowLeft,
+  BookOpen,
+  Film,
+  Tv,
+  Podcast,
+  Music,
+  Gamepad2,
+  FileText,
+  Video,
 } from "lucide-react";
 import Link from "next/link";
 
 const CONTENT_TYPES = [
-  "Book",
-  "Movie",
-  "TV Show",
-  "Podcast",
-  "Music",
-  "Game",
-  "Article",
-  "YouTube",
+  { label: "Book", icon: BookOpen },
+  { label: "Movie", icon: Film },
+  { label: "TV Show", icon: Tv },
+  { label: "Podcast", icon: Podcast },
+  { label: "Music", icon: Music },
+  { label: "Game", icon: Gamepad2 },
+  { label: "Article", icon: FileText },
+  { label: "YouTube", icon: Video },
 ];
 
 import { useRecommendations, useSaveCompassContent } from "@/hooks/queries/useCompass";
@@ -182,15 +190,16 @@ export function RecommenderClient({
           <div className="flex flex-wrap gap-4">
             {CONTENT_TYPES.map((type) => (
               <button
-                key={type}
-                onClick={() => toggleType(type)}
-                className={`px-8 py-4 font-header text-xs uppercase tracking-[0.2em] transition-all border cursor-pointer ${
-                  targetTypes.includes(type)
+                key={type.label}
+                onClick={() => toggleType(type.label)}
+                className={`px-6 py-4 font-header text-xs uppercase tracking-[0.2em] transition-all border cursor-pointer flex items-center gap-3 ${
+                  targetTypes.includes(type.label)
                     ? "bg-odilon-logo text-white border-odilon-logo shadow-lg"
                     : "bg-odilon-card text-odilon-logo border-odilon-logo/10 hover:border-odilon-logo/30"
                 }`}
               >
-                {type}
+                <type.icon className="w-4 h-4 opacity-70" />
+                {type.label}
               </button>
             ))}
           </div>

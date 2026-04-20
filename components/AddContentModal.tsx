@@ -55,6 +55,7 @@ export function AddContentModal({
       creator: (formData.get("creator") as string) || undefined,
       year: (formData.get("year") as string) || undefined,
       link: (formData.get("link") as string) || undefined,
+      playUrl: (formData.get("playUrl") as string) || undefined,
       description: (formData.get("description") as string) || undefined,
       why: initialData?.why || undefined,
       tags: initialData?.tags || undefined,
@@ -98,15 +99,15 @@ export function AddContentModal({
         className="flex items-center gap-2 px-6 py-3 bg-odilon-logo text-white text-xs uppercase tracking-widest font-header hover:shadow-lg transition-all active:scale-95 cursor-pointer"
       >
         <Plus className="w-4 h-4" />
-        Add to Favorites
+        Save A New Favorite
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
       <div
-        className="bg-odilon-background w-full max-w-lg p-8 rounded-sm shadow-2xl relative border border-odilon-logo/10"
+        className="bg-background w-full max-w-lg p-8 rounded-sm shadow-2xl relative border border-odilon-logo/20 pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -120,7 +121,7 @@ export function AddContentModal({
           <h2 className="font-header text-3xl text-odilon-logo leading-none">
             {isEditing ? "Edit favorite" : "Add to favorites"}
           </h2>
-          <p className="font-body text-sm text-odilon-logo/60 mt-2 italic">
+          <p className="font-body text-sm text-odilon-logo/60 mt-2">
             {isEditing
               ? "Update your taste profile."
               : "Add a piece of content that defines your taste."}
@@ -193,6 +194,18 @@ export function AddContentModal({
               name="link"
               defaultValue={initialData?.link || ""}
               placeholder="https://..."
+              className="w-full bg-odilon-card border-b border-odilon-logo/20 p-2 font-body text-sm focus:border-odilon-logo focus:outline-none transition-colors"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[10px] uppercase tracking-widest font-header text-odilon-logo/40">
+              Preview URL / Play URL (Audio)
+            </label>
+            <input
+              name="playUrl"
+              defaultValue={initialData?.playUrl || ""}
+              placeholder="Direct audio link (for Music)"
               className="w-full bg-odilon-card border-b border-odilon-logo/20 p-2 font-body text-sm focus:border-odilon-logo focus:outline-none transition-colors"
             />
           </div>

@@ -50,7 +50,7 @@ ${selectedContents
   )
   .join("\n")}
 
-Suggest exactly 9 new contents strictly in these formats: ${targetTypes.join(", ")}.
+Suggest exactly 8 new contents strictly in these formats: ${targetTypes.join(", ")}.
 Reflect the theme, feeling, and "soul" of the selected items.
 
 Return ONLY a JSON array:
@@ -60,7 +60,8 @@ Return ONLY a JSON array:
     "title": "content title",
     "creator": "author or creator",
     "year": "release year",
-    "link": "url (youtube creator's channel url for video, spotify artist's url for music, imdb for movie/tv, goodreads for book, steam for game, etc)",
+    "link": "url (youtube url for video, spotify url for music, imdb for movie/tv, goodreads for book, steam for game, etc)",
+    "playUrl": "for Music only: a direct audio search string or known preview url, otherwise null",
     "description": "short description",
     "why": "soulful explanation referencing the favorite items intersection",
     "tags": ["tag1", "tag2", "tag3"]
@@ -77,10 +78,45 @@ Return ONLY a JSON array:
 
   try {
     const rawRecs = JSON.parse(text);
-    return rawRecs;
+
+    // Enrich music recommendations with real preview URLs
+    const enrichedRecs = await Promise.all(
+      rawRecs.map(async (rec: any) => {
+        if (rec.type?.toLowerCase() === "music") {
+          const preview = await fetchPreviewUrl(rec.title, rec.creator);
+          if (preview) {
+            rec.playUrl = preview;
+          }
+          // Navigate to Spotify search instead of direct preview file to avoid browser downloads
+          rec.link = `https://open.spotify.com/search/${encodeURIComponent(rec.title + " " + (rec.creator || ""))}`;
+        }
+
+        if (rec.type?.toLowerCase() === "youtube") {
+          // Navigate to YouTube search for better content discovery
+          rec.link = `https://www.youtube.com/results?search_query=${encodeURIComponent(rec.title + " " + (rec.creator || ""))}`;
+        }
+        return rec;
+      }),
+    );
+
+    return enrichedRecs;
   } catch (e) {
     console.error("Failed to parse recommendations", text);
     throw new Error("AI failed to provide valid recommendations");
+  }
+}
+
+async function fetchPreviewUrl(title: string, creator?: string) {
+  try {
+    const query = encodeURIComponent(`${title} ${creator || ""}`);
+    const res = await fetch(
+      `https://itunes.apple.com/search?term=${query}&media=music&limit=1`,
+    );
+    const data = await res.json();
+    return data.results?.[0]?.previewUrl || null;
+  } catch (e) {
+    console.error("iTunes search failed", e);
+    return null;
   }
 }
 
@@ -90,6 +126,7 @@ export async function saveContent(data: {
   creator?: string;
   year?: string;
   link?: string;
+  playUrl?: string;
   description?: string;
   why?: string;
   tags?: string[];
@@ -106,6 +143,7 @@ export async function saveContent(data: {
       creator: data.creator,
       year: data.year,
       link: data.link,
+      playUrl: data.playUrl,
       description: data.description,
       why: data.why,
       tags: data.tags || [],
@@ -141,6 +179,7 @@ export async function updateContent(
     creator?: string;
     year?: string;
     link?: string;
+    playUrl?: string;
     description?: string;
     why?: string;
     tags?: string[];
@@ -157,6 +196,7 @@ export async function updateContent(
       creator: data.creator,
       year: data.year,
       link: data.link,
+      playUrl: data.playUrl,
       description: data.description,
       why: data.why,
       tags: data.tags,

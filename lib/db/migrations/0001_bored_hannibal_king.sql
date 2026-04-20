@@ -1,0 +1,1 @@
+ALTER TABLE "compass_contents" ADD COLUMN "play_url" text;

@@ -10,9 +10,12 @@ import {
   User,
   Tag,
   Pencil,
+  Play,
+  Pause,
 } from "lucide-react";
 import { CompassContent } from "@/lib/db/schema";
 import { useDeleteCompassContent } from "@/hooks/queries/useCompass";
+import { useMusicStore } from "@/hooks/useMusicStore";
 import { AddContentModal } from "./AddContentModal";
 
 interface ContentCardProps {
@@ -42,6 +45,20 @@ export function ContentCard({
       }
     }
   };
+  
+  const { activeUrl, play, pause } = useMusicStore();
+  const isPlaying = activeUrl === content.playUrl;
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!content.playUrl) return;
+
+    if (isPlaying) {
+      pause();
+    } else {
+      play(content.playUrl);
+    }
+  };
 
   return (
     <div className="bg-odilon-card border border-odilon-logo/10 p-3 rounded-sm shadow-sm space-y-4 hover:shadow-md transition-all relative group h-full flex flex-col">
@@ -60,6 +77,23 @@ export function ContentCard({
             >
               <LinkIcon className="w-3.5 h-3.5" />
             </a>
+          )}
+          {content.type.toLowerCase() === "music" && content.playUrl && (
+            <button
+              onClick={togglePlay}
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+                isPlaying
+                  ? "bg-odilon-accent text-odilon-logo"
+                  : "bg-odilon-card border border-odilon-logo/10 text-odilon-logo/60 hover:text-odilon-logo hover:bg-odilon-logo/5 shadow-sm"
+              }`}
+              title={isPlaying ? "Pause Preview" : "Play Preview"}
+            >
+              {isPlaying ? (
+                <Pause className="w-3 h-3 fill-current" />
+              ) : (
+                <Play className="w-3 h-3 fill-current ml-0.5" />
+              )}
+            </button>
           )}
           {isRecommendation && onSave && (
             <button
@@ -138,17 +172,19 @@ export function ContentCard({
         </div>
       )}
 
-      <div className="mt-auto pt-4 flex flex-wrap gap-2">
-        {((content.tags as string[]) || []).map((tag, i) => (
-          <span
-            key={i}
-            className="flex items-center gap-1 text-[10px] text-odilon-logo/50 font-header uppercase tracking-tighter"
-          >
-            <Tag className="w-2.5 h-2.5" />
-            {tag}
-          </span>
-        ))}
-      </div>
+      {content.tags && content.tags.length > 0 && (
+        <div className="mt-auto pt-4 flex flex-wrap gap-2">
+          {content.tags.map((tag, i) => (
+            <span
+              key={i}
+              className="flex items-center gap-1 text-[10px] text-odilon-logo/50 font-header uppercase tracking-tighter"
+            >
+              <Tag className="w-2.5 h-2.5" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

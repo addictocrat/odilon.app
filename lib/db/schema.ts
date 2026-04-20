@@ -110,7 +110,8 @@ export const compassContents = pgTable("compass_contents", {
   link: text("link"),
   description: text("description"),
   why: text("why"), // Explanation why it was recommended
-  tags: jsonb("tags").notNull().default([]),
+  playUrl: text("play_url"),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
   isSaved: boolean("is_saved").notNull().default(true), // Distinguish between user's own saved vs AI suggested (if we store them temporarily)
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
