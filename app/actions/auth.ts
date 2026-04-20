@@ -14,7 +14,7 @@ import {
   FormState,
 } from "@/lib/auth/definitions";
 import { createSession, deleteSession } from "@/lib/auth/session";
-import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/auth/email";
+import { sendVerificationEmail, sendPasswordResetEmail, sendAdminSignupNotification } from "@/lib/auth/email";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -68,6 +68,7 @@ export async function signUpAction(state: FormState, formData: FormData): Promis
     });
 
     await sendVerificationEmail(email, token);
+    await sendAdminSignupNotification(email);
 
     return {
       success: true,

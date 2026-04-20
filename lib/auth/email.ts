@@ -46,3 +46,25 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     `,
   });
 }
+export async function sendAdminSignupNotification(userEmail: string) {
+  try {
+    const adminEmails = process.env.ADMIN_EMAILS;
+    if (!adminEmails || adminEmails.trim() === "") return;
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: adminEmails,
+      subject: `odilon new sign up: ${userEmail}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #483434;">New Signup Notification</h1>
+          <p style="color: #6B4F4F;">A new user has just registered on Odilon:</p>
+          <p style="color: #483434; font-weight: bold; font-size: 18px;">${userEmail}</p>
+          <p style="color: #6B4F4F; font-size: 14px; margin-top: 24px;">This is an automated notification for site administrators.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send admin signup notification:", error);
+  }
+}

@@ -45,6 +45,7 @@ POSTGRES_URL=postgresql://user:password@localhost:5432/odilon
 # Authentication & URL
 AUTH_SECRET=your_random_secret
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+ADMIN_EMAILS=email1@example.com,email2@example.com # Comma-separated list for dashboard access
 
 # Email (Optional/SMTP)
 SMTP_HOST=your_smtp_host

@@ -5,9 +5,10 @@ import { logoutAction } from "@/app/actions/auth";
 
 interface TopBannerProps {
   isAuthenticated?: boolean;
+  isAdmin?: boolean;
 }
 
-export const TopBanner = ({ isAuthenticated = false }: TopBannerProps) => {
+export const TopBanner = ({ isAuthenticated = false, isAdmin = false }: TopBannerProps) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] flex justify-center items-center pointer-events-none p-2 sm:p-3">
       <button
@@ -21,6 +22,16 @@ export const TopBanner = ({ isAuthenticated = false }: TopBannerProps) => {
       <div className="pointer-events-auto absolute right-0 flex gap-2 sm:gap-3 p-2 sm:p-3">
         {isAuthenticated ? (
           <>
+            {isAdmin && (
+              <button
+                className="font-body text-[9px] sm:text-[10px] tracking-[0.2em] text-odilon-logo hover:text-odilon-logo hover:underline decoration-odilon-accent/30 underline-offset-4 transition-all duration-500 ease-out cursor-pointer"
+                onClick={() => {
+                  window.location.href = "/analytics";
+                }}
+              >
+                analytics
+              </button>
+            )}
             <button
               className="font-body text-[9px] sm:text-[10px] tracking-[0.2em] text-odilon-logo hover:text-odilon-logo hover:underline decoration-odilon-accent/30 underline-offset-4 transition-all duration-500 ease-out cursor-pointer"
               onClick={() => {
