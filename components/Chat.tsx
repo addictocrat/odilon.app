@@ -3,6 +3,86 @@
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import gsap from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(useGSAP, SplitText);
+
+function ChatMessage({
+  message,
+  index,
+  isLast,
+  status,
+}: {
+  message: any;
+  index: number;
+  isLast: boolean;
+  status: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const isUser = message.role === "user";
+  const content = message.content || message.text;
+  const isStreaming = isLast && (status === "streaming" || status === "submitted");
+
+  useGSAP(
+    () => {
+      // We only animate assistant messages, and wait until they aren't actively streaming
+      // to avoid re-splitting every single chunk update which would be jarring/expensive.
+      if (isUser || !textRef.current || isStreaming || !content) return;
+
+      const split = new SplitText(textRef.current, { 
+        type: "words",
+        wordsClass: "inline-block" // Ensures words behave well during translation
+      });
+
+      gsap.from(split.words, {
+        opacity: 0,
+        y: 10,
+        filter: "blur(4px)",
+        stagger: 0.02,
+        duration: 0.8,
+        ease: "power2.out",
+        clearProps: "all", // Cleanup after animation finishes
+      });
+
+      return () => split.revert();
+    },
+    { scope: containerRef, dependencies: [content, isStreaming] },
+  );
+
+  if (!isUser && isStreaming) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        "p-5 rounded-2xl max-w-[85%] shadow-sm",
+        isUser
+          ? "bg-background ml-auto border border-odilon-accent/20 text-foreground"
+          : "bg-odilon-logo text-white",
+      )}
+    >
+      <div
+        className={cn(
+          "font-header text-[10px] mb-2 uppercase tracking-[0.2em]",
+          isUser ? "text-odilon-logo/60" : "text-white/60",
+        )}
+      >
+        {isUser ? "Inquirer" : "The Voice of Art"}
+      </div>
+      <div className="space-y-2">
+        <div
+          ref={textRef}
+          className="whitespace-pre-wrap leading-relaxed text-[15px]"
+        >
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Chat() {
   const [input, setInput] = useState("");
@@ -33,28 +113,14 @@ export default function Chat() {
             <p>The canvas is silent. Ask your first question...</p>
           </div>
         )}
-        {messages.map((m) => (
-          <div
+        {messages.map((m, idx) => (
+          <ChatMessage
             key={m.id}
-            className={cn(
-              "p-5 rounded-2xl max-w-[85%] shadow-sm",
-              m.role === "user"
-                ? "bg-background ml-auto border border-odilon-accent/20 text-foreground"
-                : "bg-odilon-logo text-white",
-            )}
-          >
-            <div className={cn(
-              "font-header text-[10px] mb-2 uppercase tracking-[0.2em]",
-              m.role === "user" ? "text-odilon-logo/60" : "text-white/60"
-            )}>
-              {m.role === "user" ? "Inquirer" : "The Voice of Art"}
-            </div>
-            <div className="space-y-2">
-              <div className="whitespace-pre-wrap leading-relaxed text-[15px]">
-                {(m as any).content || (m as any).text}
-              </div>
-            </div>
-          </div>
+            message={m}
+            index={idx}
+            isLast={idx === messages.length - 1}
+            status={status}
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>

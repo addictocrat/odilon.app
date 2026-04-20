@@ -6,6 +6,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { updateConversationMessages } from "@/app/actions/chat";
+import gsap from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(useGSAP, SplitText);
 
 interface Artwork {
   id: number;
@@ -31,6 +36,78 @@ interface ArtworkChatClientProps {
   initialMessages: any[];
 }
 
+function ChatMessage({
+  message,
+  isLast,
+  isLoading,
+}: {
+  message: Message;
+  isLast: boolean;
+  isLoading: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const isUser = message.role === "user";
+  const isStreaming = isLast && isLoading;
+
+  useGSAP(
+    () => {
+      if (isUser || !textRef.current || isStreaming || !message.content) return;
+
+      const split = new SplitText(textRef.current, {
+        type: "words",
+        wordsClass: "inline-block",
+      });
+
+      gsap.from(split.words, {
+        opacity: 0,
+        y: 8,
+        filter: "blur(4px)",
+        stagger: 0.015,
+        duration: 0.8,
+        ease: "power2.out",
+        clearProps: "all",
+      });
+
+      return () => split.revert();
+    },
+    { scope: containerRef, dependencies: [message.content, isStreaming] },
+  );
+
+  if (!isUser && isStreaming) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        "flex flex-col gap-2 max-w-[90%] md:max-w-[80%]",
+        isUser ? "ml-auto items-end" : "mr-auto items-start",
+      )}
+    >
+      <div
+        className={cn(
+          "font-header text-[10px] uppercase tracking-[0.2em]",
+          isUser ? "text-[#6B4F4F]/40" : "text-[#B6C7AA]",
+        )}
+      >
+        {isUser ? "Inquirer" : "The Voice of Art"}
+      </div>
+      <div
+        className={cn(
+          "p-4 md:p-6 rounded-2xl text-sm md:text-[15px] leading-relaxed shadow-sm transition-all",
+          isUser
+            ? "bg-[#E7D4B5] text-[#483434] border border-[#483434]/5"
+            : "bg-[#483434] text-[#F6E6CB] selection:bg-[#B6C7AA] selection:text-[#483434]",
+        )}
+      >
+        <div ref={textRef} className="whitespace-pre-wrap">
+          {message.content}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ArtworkChatClient({
   chatId,
   initialArtwork: artwork,
@@ -53,7 +130,6 @@ export function ArtworkChatClient({
 
     setIsLoading(true);
 
-    // Add message to UI immediately
     const userMessage = {
       id: `user-${Date.now()}`,
       role: "user" as const,
@@ -63,7 +139,6 @@ export function ArtworkChatClient({
     setMessages(updatedMessages);
     setInput("");
 
-    // Send to API with artwork and chatId in body
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,9 +167,7 @@ export function ArtworkChatClient({
       const chunk = new TextDecoder().decode(value);
       buffer += chunk;
 
-      // Process complete lines from the buffer
       const lines = buffer.split("\n");
-      // Keep the last partial line in the buffer
       buffer = lines.pop() || "";
 
       for (const line of lines) {
@@ -111,12 +184,9 @@ export function ArtworkChatClient({
           } else if (parsed.type === "text" && parsed.text) {
             assistantMessage += parsed.text;
           }
-        } catch (e) {
-          // Ignore incomplete JSON chunks or parsing errors
-        }
+        } catch (e) {}
       }
 
-      // Update assistant message in real-time
       setMessages((prev) => {
         const lastMsg = prev[prev.length - 1];
         if (lastMsg?.role === "assistant") {
@@ -235,37 +305,13 @@ export function ArtworkChatClient({
           {/* Right Side: Chat Messages */}
           <div className="flex-1 flex flex-col bg-[#F6E6CB] relative">
             <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 space-y-8 scrollbar-hide">
-              {messages.map((m) => (
-                <div
+              {messages.map((m, idx) => (
+                <ChatMessage
                   key={m.id}
-                  className={cn(
-                    "flex flex-col gap-2 max-w-[90%] md:max-w-[80%] animate-in fade-in slide-in-from-bottom-2 duration-700",
-                    m.role === "user"
-                      ? "ml-auto items-end"
-                      : "mr-auto items-start",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "font-header text-[10px] uppercase tracking-[0.2em]",
-                      m.role === "user"
-                        ? "text-[#6B4F4F]/40"
-                        : "text-[#B6C7AA]",
-                    )}
-                  >
-                    {m.role === "user" ? "Inquirer" : "The Voice of Art"}
-                  </div>
-                  <div
-                    className={cn(
-                      "p-4 md:p-6 rounded-2xl text-sm md:text-[15px] leading-relaxed shadow-sm transition-all",
-                      m.role === "user"
-                        ? "bg-[#E7D4B5] text-[#483434] border border-[#483434]/5"
-                        : "bg-[#483434] text-[#F6E6CB] selection:bg-[#B6C7AA] selection:text-[#483434]",
-                    )}
-                  >
-                    <div className="whitespace-pre-wrap">{m.content}</div>
-                  </div>
-                </div>
+                  message={m}
+                  isLast={idx === messages.length - 1}
+                  isLoading={isLoading}
+                />
               ))}
               {isLoading && (
                 <div className="flex gap-3 items-center text-[#B6C7AA] animate-pulse">
