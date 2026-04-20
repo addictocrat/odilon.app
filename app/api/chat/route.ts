@@ -26,6 +26,27 @@ export async function POST(req: Request) {
       requestedProfile: profile,
     });
 
+    // Rate Limiting Check: max 10 messages per 3 minutes
+    const userMessagesInSession = messages.filter(
+      (m: any) => m.role === "user" && m.createdAt
+    );
+    if (userMessagesInSession.length > 10) {
+      const now = new Date().getTime();
+      const threeMinsAgo = now - 3 * 60 * 1000;
+      const recentMessages = userMessagesInSession.filter(
+        (m: any) => new Date(m.createdAt).getTime() > threeMinsAgo
+      );
+
+      if (recentMessages.length > 2) {
+        return new Response(
+          JSON.stringify({
+            error: "Too many messages. Please wait before conversing again.",
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     if (!chatId) {
       return new Response("Missing chatId", { status: 400 });
     }
@@ -86,10 +107,14 @@ Details:
 The user's thoughts are focused on THIS specific masterpiece. Channel its history and emotion in your response.`;
     }
 
+    // Token Management: Only send the last 8 messages to stay context-efficient and manage costs
+    // The model stays grounded because the artwork metadata is in the 'systemPrompt' above.
+    const messageWindow = (messages as any[]).slice(-8);
+
     const result = streamText({
       model: openrouter(modelId),
       system: systemPrompt,
-      messages: (messages as any[]).map((m) => ({
+      messages: messageWindow.map((m) => ({
         role: m.role,
         content: m.content || "",
       })),

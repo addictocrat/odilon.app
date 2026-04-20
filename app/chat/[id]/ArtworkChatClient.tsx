@@ -27,7 +27,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  createdAt?: Date;
+  createdAt?: string | Date;
 }
 
 interface ArtworkChatClientProps {
@@ -117,6 +117,7 @@ export function ArtworkChatClient({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState("mistralai/mistral-small-2603");
   const [selectedProfile, setSelectedProfile] = useState("poetic");
 
@@ -137,13 +138,48 @@ export function ArtworkChatClient({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const checkRateLimit = () => {
+      const RATE_LIMIT_COUNT = 2; // Synchronized with recent 2 messages test from backend
+      const userMessages = messages.filter((m) => m.role === "user" && m.createdAt);
+      if (userMessages.length <= RATE_LIMIT_COUNT) {
+        if (cooldownRemaining !== 0) setCooldownRemaining(0);
+        return;
+      }
+      
+      const now = Date.now();
+      const threeMinutesAgo = now - 3 * 60 * 1000;
+      
+      const sortedUserMessages = [...userMessages].sort(
+        (a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+      );
+      
+      const thresholdMessageTime = new Date(sortedUserMessages[RATE_LIMIT_COUNT].createdAt!).getTime();
+      
+      if (thresholdMessageTime > threeMinutesAgo) {
+        const remaining = Math.ceil((thresholdMessageTime + 3 * 60 * 1000 - now) / 1000);
+        if (remaining > 0) {
+          setCooldownRemaining(remaining);
+        } else {
+          if (cooldownRemaining !== 0) setCooldownRemaining(0);
+        }
+      } else {
+        if (cooldownRemaining !== 0) setCooldownRemaining(0);
+      }
+    };
+
+    checkRateLimit();
+    const interval = setInterval(checkRateLimit, 1000);
+    return () => clearInterval(interval);
+  }, [messages, cooldownRemaining]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || cooldownRemaining > 0) return;
 
     setIsLoading(true);
 
@@ -151,6 +187,7 @@ export function ArtworkChatClient({
       id: `user-${Date.now()}`,
       role: "user" as const,
       content: input,
+      createdAt: new Date().toISOString(),
     };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -220,6 +257,7 @@ export function ArtworkChatClient({
               id: `assistant-${Date.now()}`,
               role: "assistant",
               content: assistantMessage,
+              createdAt: new Date().toISOString(),
             },
           ];
         }
@@ -381,7 +419,7 @@ export function ArtworkChatClient({
             </div>
 
             {/* Input Form */}
-            <div className="p-4 md:p-8 border-t border-[#483434]/5 bg-gradient-to-t from-[#F6E6CB] to-transparent">
+            <div className="p-4 md:p-8 border-t border-[#483434]/5 bg-gradient-to-t from-[#F6E6CB] to-transparent relative">
               <form
                 onSubmit={handleSubmit}
                 className="relative group max-w-4xl mx-auto w-full"
@@ -390,14 +428,23 @@ export function ArtworkChatClient({
                   value={input}
                   onChange={handleInputChange}
                   placeholder={`Speak to "${artwork.title}"...`}
-                  className="w-full bg-[#E7D4B5]/20 text-[#483434] border border-transparent focus:border-[#B6C7AA]/40 rounded-xl px-6 md:px-10 py-4 md:py-6 pr-16 md:pr-20 outline-none transition-all shadow-inner focus:shadow-xl focus:bg-white placeholder:text-[#483434]/40 font-body text-base md:text-lg"
+                  className="w-full bg-[#E7D4B5]/20 text-[#483434] border border-transparent focus:border-[#B6C7AA]/40 rounded-xl px-6 md:px-10 py-4 md:py-6 pr-24 md:pr-28 outline-none transition-all shadow-inner focus:shadow-xl focus:bg-white placeholder:text-[#483434]/40 font-body text-base md:text-lg"
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !input}
-                  className="absolute right-2 top-2 bottom-2 aspect-square bg-[#B6C7AA] text-[#483434] rounded-lg flex items-center justify-center hover:bg-[#483434] hover:text-[#E7D4B5] transition-all duration-500 disabled:opacity-30 active:scale-95 group-hover:shadow-lg"
+                  disabled={isLoading || !input || cooldownRemaining > 0}
+                  className={cn(
+                    "absolute right-2 top-2 bottom-2 bg-[#B6C7AA] text-[#483434] rounded-lg flex items-center justify-center transition-all duration-500 disabled:opacity-30 active:scale-95 group-hover:shadow-lg",
+                    cooldownRemaining > 0 
+                      ? "px-4 font-header text-xs md:text-sm font-bold tracking-widest cursor-not-allowed" 
+                      : "aspect-square hover:bg-[#483434] hover:text-[#E7D4B5]"
+                  )}
                 >
-                  <Send className="w-5 h-5 md:w-6 md:h-6" />
+                  {cooldownRemaining > 0 ? (
+                    `${Math.floor(cooldownRemaining / 60)}:${(cooldownRemaining % 60).toString().padStart(2, '0')}`
+                  ) : (
+                    <Send className="w-5 h-5 md:w-6 md:h-6" />
+                  )}
                 </button>
               </form>
             </div>
