@@ -72,7 +72,7 @@ export function PaintingSearch({
     }
 
     try {
-      const limit = isLoggedIn ? 10 : 4;
+      const limit = isLoggedIn ? 10 : 6;
       const data = await searchMutation.mutateAsync({ query: searchTerm, limit });
       setResults(data as Artwork[] || []);
       setIsOpen(true);

@@ -10,10 +10,10 @@ gsap.registerPlugin(useGSAP, SplitText);
 
 const HEADLINE = "Talk to paintings.";
 
-// Intro pacing — the Odilon logo starts drawing at ~1s, so the headline
-// letters begin 1.2s after that. The search bar follows once the letters
+// Intro pacing — the Odilon logo starts drawing at ~0.4s, so the headline
+// letters begin shortly after that. The search bar follows once the letters
 // have finished (letters × stagger + a small gap).
-const LETTER_START_DELAY = 2.2;
+const LETTER_START_DELAY = 2.6;
 const LETTER_STAGGER = 0.05;
 
 /**

@@ -29,7 +29,7 @@ export default function Home() {
     setIsScrolling(true);
     const start = window.scrollY;
     const distance = target - start;
-    const duration = 1200; // Snappier for better mobile/touch feel
+    const duration = 1600;
     let startTime: number | null = null;
 
     // Ease In Out Quint
@@ -157,16 +157,16 @@ export default function Home() {
       const vh = window.innerHeight;
 
       // Sync Logo Reverse state with scroll position
-      // Trigger reverse instantly using raw scrollY to bypass smoothing delay
-      if (state.scrollY < 20) {
+      // Trigger reverse immediately as we scroll away from the top
+      if (state.scrollY < 10) {
         setLogoReverse(false);
       } else {
         setLogoReverse(true);
       }
 
-      // Logo Fade Out between 0.2vh and 0.7vh
-      const logoStart = vh * 0.2;
-      const logoEnd = vh * 0.7;
+      // Logo Fade Out between 0.6vh and 1.2vh
+      const logoStart = vh * 0.6;
+      const logoEnd = vh * 1.2;
       const lOpacity = Math.max(
         0,
         Math.min(1, 1 - (y - logoStart) / (logoEnd - logoStart)),

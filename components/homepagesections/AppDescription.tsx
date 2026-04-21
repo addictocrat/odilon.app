@@ -66,8 +66,14 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
       tl.fromTo(
         split.words,
         { opacity: 0, y: 24 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "power4.out", stagger: 0.03 },
+        { opacity: 1, y: 0, duration: 1.2, ease: "power4.out", stagger: 0.1 },
       )
+        .fromTo(
+          [".get-started-btn", ".review-badge"],
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.8, ease: "power4.out", stagger: 0 },
+          "-=0.5",
+        )
         .fromTo(
           ".chat-bubble",
           { opacity: 0, scale: 0.8, y: 20 },
@@ -79,19 +85,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
             ease: "elastic.out(1, 0.8)",
             stagger: 0.4,
           },
-          "-=0.4",
-        )
-        .fromTo(
-          ".get-started-btn",
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" },
-          "-=1.2",
-        )
-        .fromTo(
-          ".review-badge",
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" },
-          "-=1.0",
+          "-=0.1",
         );
 
       tlRef.current = tl;
@@ -169,7 +163,7 @@ export const AppDescription = ({ opacity }: { opacity: number }) => {
             <div className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 mt-6 md:mt-10">
               <button
                 onClick={() => router.push("/signup")}
-                className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-all duration-500 pointer-events-auto opacity-0"
+                className="get-started-btn px-10 md:px-12 py-4 md:py-5 bg-[#EBEBEB] text-odilon-heading font-header text-xl md:text-2xl rounded-sm shadow-[inset_0_2px_5px_rgba(0,0,0,0.2),0_10px_15px_rgba(0,0,0,0.1)] hover:bg-[#F3F4F6] hover:scale-105 active:scale-95 transition-colors duration-500 pointer-events-auto cursor-pointer opacity-0"
               >
                 Join now
               </button>
