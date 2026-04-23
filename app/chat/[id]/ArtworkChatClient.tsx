@@ -40,10 +40,12 @@ function ChatMessage({
   message,
   isLast,
   isLoading,
+  artistName,
 }: {
   message: Message;
   isLast: boolean;
   isLoading: boolean;
+  artistName?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,7 @@ function ChatMessage({
           isUser ? "text-[#6B4F4F]/40" : "text-[#B6C7AA]",
         )}
       >
-        {isUser ? "Inquirer" : "The Voice of Art"}
+        {isUser ? "Inquirer" : (artistName ?? "The Voice of Art")}
       </div>
       <div
         className={cn(
@@ -271,6 +273,10 @@ export function ArtworkChatClient({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const ARTIST_PREFIXES = /^(Imitator of|After|Follower of|Circle of|Workshop of|Studio of|School of|Attributed to|Style of)\s+/i;
+  const rawArtist = artwork.artist_display?.split(" (")[0] ?? "";
+  const artistName = rawArtist.replace(ARTIST_PREFIXES, "").trim() || "The Voice of Art";
+
   return (
     <div className="flex h-screen bg-[#F6E6CB] overflow-hidden">
       {/* Sidebar */}
@@ -405,6 +411,7 @@ export function ArtworkChatClient({
                   message={m}
                   isLast={idx === messages.length - 1}
                   isLoading={isLoading}
+                  artistName={artistName}
                 />
               ))}
               {isLoading && (
