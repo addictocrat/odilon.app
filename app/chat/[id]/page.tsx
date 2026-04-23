@@ -1,6 +1,6 @@
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { getConversation } from "@/app/actions/chat";
+import { getConversation, getConversations } from "@/app/actions/chat";
 import { ArtworkChatClient } from "./ArtworkChatClient";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,10 @@ export default async function ArtworkChatPage({ params }: { params: Promise<{ id
     redirect(`/login?callbackUrl=/chat/${id}`);
   }
 
-  const chat = await getConversation(id);
+  const [chat, conversations] = await Promise.all([
+    getConversation(id),
+    getConversations(),
+  ]);
   console.log("Loading Chat Page:", id, "Found:", !!chat, "Messages In DB:", chat?.messages?.length);
 
   if (!chat || chat.userId !== session.userId) {
@@ -22,10 +25,11 @@ export default async function ArtworkChatPage({ params }: { params: Promise<{ id
 
   return (
     <div className="min-h-screen bg-[#F6E6CB]">
-      <ArtworkChatClient 
+      <ArtworkChatClient
         chatId={chat.id}
-        initialArtwork={chat.artworkData as any} 
+        initialArtwork={chat.artworkData as any}
         initialMessages={chat.messages as any[]}
+        initialConversations={conversations}
       />
     </div>
   );

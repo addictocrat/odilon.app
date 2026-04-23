@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Send, Sparkles, Menu } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Menu, Share2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ChatSidebar } from "@/components/ChatSidebar";
@@ -9,6 +9,7 @@ import { updateConversationMessages } from "@/app/actions/chat";
 import gsap from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
+import { toast } from "sonner";
 
 gsap.registerPlugin(useGSAP, SplitText);
 
@@ -34,6 +35,7 @@ interface ArtworkChatClientProps {
   chatId: string;
   initialArtwork: Artwork;
   initialMessages: any[];
+  initialConversations?: any[];
 }
 
 function ChatMessage({
@@ -41,14 +43,19 @@ function ChatMessage({
   isLast,
   isLoading,
   artistName,
+  question,
+  onShare,
 }: {
   message: Message;
   isLast: boolean;
   isLoading: boolean;
   artistName?: string;
+  question?: string;
+  onShare?: (question: string, answer: string) => Promise<void>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
   const isUser = message.role === "user";
   const isStreaming = isLast && isLoading;
 
@@ -106,6 +113,31 @@ function ChatMessage({
           {message.content}
         </div>
       </div>
+
+      {!isUser && !isStreaming && question && onShare && (
+        <button
+          onClick={async () => {
+            setIsSharing(true);
+            try {
+              await onShare(question, message.content);
+            } finally {
+              setIsSharing(false);
+            }
+          }}
+          disabled={isSharing || isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#B6C7AA]/40 bg-[#E7D4B5]/60 text-[#6B4F4F] hover:bg-[#B6C7AA]/20 hover:border-[#B6C7AA] hover:text-[#483434] transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          title="Save as shareable image"
+        >
+          {isSharing ? (
+            <Loader2 className="w-3 h-3 animate-spin text-[#B6C7AA]" />
+          ) : (
+            <Share2 className="w-3 h-3" />
+          )}
+          <span className="font-header text-[9px] uppercase tracking-widest">
+            {isSharing ? "Generating..." : "Share"}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
@@ -114,13 +146,18 @@ export function ArtworkChatClient({
   chatId,
   initialArtwork: artwork,
   initialMessages,
+  initialConversations,
 }: ArtworkChatClientProps) {
+  const MAX_INPUT_CHARS = 800;
   const [input, setInput] = useState("");
+  const [inputLimitError, setInputLimitError] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
-  const [selectedModel, setSelectedModel] = useState("mistralai/mistral-small-2603");
+  const [selectedModel, setSelectedModel] = useState(
+    "mistralai/mistral-small-2603",
+  );
   const [selectedProfile, setSelectedProfile] = useState("poetic");
 
   const MODELS = [
@@ -140,26 +177,85 @@ export function ArtworkChatClient({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const handleShare = async (question: string, answer: string) => {
+    try {
+      // Try to fetch image client-side to bypass potential server-side IP blocks
+      let clientImageDataUrl = null;
+      try {
+        const imageUrl = `https://www.artic.edu/iiif/2/${artwork.image_id}/full/600,/0/default.jpg`;
+        const imgRes = await fetch(imageUrl);
+        if (imgRes.ok) {
+          const blob = await imgRes.blob();
+          clientImageDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (e) {
+        console.warn(
+          "Client-side image fetch failed, falling back to server-side",
+          e,
+        );
+      }
+
+      const response = await fetch("/api/share-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          answer,
+          imageId: artwork.image_id,
+          artworkTitle: artwork.title,
+          artistName,
+          clientImageDataUrl,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate card");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `odilon-${artwork.title.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Could not generate share card.");
+    }
+  };
+
   useEffect(() => {
     const checkRateLimit = () => {
       const RATE_LIMIT_COUNT = 2; // Synchronized with recent 2 messages test from backend
-      const userMessages = messages.filter((m) => m.role === "user" && m.createdAt);
+      const userMessages = messages.filter(
+        (m) => m.role === "user" && m.createdAt,
+      );
       if (userMessages.length <= RATE_LIMIT_COUNT) {
         if (cooldownRemaining !== 0) setCooldownRemaining(0);
         return;
       }
-      
+
       const now = Date.now();
       const threeMinutesAgo = now - 3 * 60 * 1000;
-      
+
       const sortedUserMessages = [...userMessages].sort(
-        (a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        (a, b) =>
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime(),
       );
-      
-      const thresholdMessageTime = new Date(sortedUserMessages[RATE_LIMIT_COUNT].createdAt!).getTime();
-      
+
+      const thresholdMessageTime = new Date(
+        sortedUserMessages[RATE_LIMIT_COUNT].createdAt!,
+      ).getTime();
+
       if (thresholdMessageTime > threeMinutesAgo) {
-        const remaining = Math.ceil((thresholdMessageTime + 3 * 60 * 1000 - now) / 1000);
+        const remaining = Math.ceil(
+          (thresholdMessageTime + 3 * 60 * 1000 - now) / 1000,
+        );
         if (remaining > 0) {
           setCooldownRemaining(remaining);
         } else {
@@ -176,12 +272,26 @@ export function ArtworkChatClient({
   }, [messages, cooldownRemaining]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value);
+    const nextValue = e.target.value;
+
+    // Hard cap input at 800 characters in the UI.
+    if (nextValue.length > MAX_INPUT_CHARS) {
+      setInputLimitError(true);
+      return;
+    }
+
+    setInput(nextValue);
+    if (inputLimitError) setInputLimitError(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading || cooldownRemaining > 0) return;
+
+    if (input.trim().length > MAX_INPUT_CHARS) {
+      setInputLimitError(true);
+      return;
+    }
 
     setIsLoading(true);
 
@@ -273,9 +383,11 @@ export function ArtworkChatClient({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const ARTIST_PREFIXES = /^(Imitator of|After|Follower of|Circle of|Workshop of|Studio of|School of|Attributed to|Style of)\s+/i;
+  const ARTIST_PREFIXES =
+    /^(Imitator of|After|Follower of|Circle of|Workshop of|Studio of|School of|Attributed to|Style of)\s+/i;
   const rawArtist = artwork.artist_display?.split(" (")[0] ?? "";
-  const artistName = rawArtist.replace(ARTIST_PREFIXES, "").trim() || "The Voice of Art";
+  const artistName =
+    rawArtist.replace(ARTIST_PREFIXES, "").trim() || "The Voice of Art";
 
   return (
     <div className="flex h-screen bg-[#F6E6CB] overflow-hidden">
@@ -286,7 +398,7 @@ export function ArtworkChatClient({
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <ChatSidebar />
+        <ChatSidebar initialData={initialConversations} />
       </div>
 
       {/* Main Content */}
@@ -324,12 +436,12 @@ export function ArtworkChatClient({
         <div className="flex-1 flex overflow-hidden">
           {/* Left Side: Artwork Details (Desktop only) */}
           <aside className="hidden xl:flex flex-col w-80 p-8 border-r border-[#483434]/5 bg-[#E7D4B5]/10 overflow-y-auto scrollbar-hide">
-            <div className="relative aspect-[3/4] w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
+            <div className="relative w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
               {artwork.image_id ? (
                 <img
                   src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
                   alt={artwork.title}
-                  className="object-cover w-full h-full"
+                  className="w-full h-auto object-contain"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#483434]/20 font-header uppercase tracking-tighter text-2xl">
@@ -339,7 +451,6 @@ export function ArtworkChatClient({
             </div>
 
             <div className="mt-8 space-y-6">
-
               <div>
                 <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
                   Details
@@ -405,15 +516,26 @@ export function ArtworkChatClient({
           {/* Right Side: Chat Messages */}
           <div className="flex-1 flex flex-col bg-[#F6E6CB] relative">
             <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 space-y-8 scrollbar-hide">
-              {messages.map((m, idx) => (
-                <ChatMessage
-                  key={m.id}
-                  message={m}
-                  isLast={idx === messages.length - 1}
-                  isLoading={isLoading}
-                  artistName={artistName}
-                />
-              ))}
+              {messages.map((m, idx) => {
+                const prevUserMsg =
+                  m.role === "assistant"
+                    ? messages
+                        .slice(0, idx)
+                        .reverse()
+                        .find((msg) => msg.role === "user")
+                    : undefined;
+                return (
+                  <ChatMessage
+                    key={m.id}
+                    message={m}
+                    isLast={idx === messages.length - 1}
+                    isLoading={isLoading}
+                    artistName={artistName}
+                    question={prevUserMsg?.content}
+                    onShare={m.role === "assistant" ? handleShare : undefined}
+                  />
+                );
+              })}
               {isLoading && (
                 <div className="flex gap-3 items-center text-[#B6C7AA] animate-pulse">
                   <Sparkles className="w-4 h-4" />
@@ -434,25 +556,41 @@ export function ArtworkChatClient({
                 <input
                   value={input}
                   onChange={handleInputChange}
+                  maxLength={MAX_INPUT_CHARS}
                   placeholder={`Speak to "${artwork.title}"...`}
-                  className="w-full bg-[#E7D4B5]/20 text-[#483434] border border-transparent focus:border-[#B6C7AA]/40 rounded-xl px-6 md:px-10 py-4 md:py-6 pr-24 md:pr-28 outline-none transition-all shadow-inner focus:shadow-xl focus:bg-white placeholder:text-[#483434]/40 font-body text-base md:text-lg"
+                  className={cn(
+                    "w-full bg-[#E7D4B5]/20 text-[#483434] border border-transparent rounded-xl px-6 md:px-10 py-4 md:py-6 pr-24 md:pr-28 outline-none transition-all shadow-inner focus:shadow-xl focus:bg-white placeholder:text-[#483434]/40 font-body text-base md:text-lg",
+                    inputLimitError
+                      ? "border-red-500/70 focus:border-red-500"
+                      : "focus:border-[#B6C7AA]/40",
+                  )}
                 />
                 <button
                   type="submit"
-                  disabled={isLoading || !input || cooldownRemaining > 0}
+                  disabled={
+                    isLoading ||
+                    !input ||
+                    cooldownRemaining > 0 ||
+                    input.trim().length > MAX_INPUT_CHARS
+                  }
                   className={cn(
                     "absolute right-2 top-2 bottom-2 bg-[#B6C7AA] text-[#483434] rounded-lg flex items-center justify-center transition-all duration-500 disabled:opacity-30 active:scale-95 group-hover:shadow-lg",
-                    cooldownRemaining > 0 
-                      ? "px-4 font-header text-xs md:text-sm font-bold tracking-widest cursor-not-allowed" 
-                      : "aspect-square hover:bg-[#483434] hover:text-[#E7D4B5]"
+                    cooldownRemaining > 0
+                      ? "px-4 font-header text-xs md:text-sm font-bold tracking-widest cursor-not-allowed"
+                      : "aspect-square hover:bg-[#483434] hover:text-[#E7D4B5]",
                   )}
                 >
                   {cooldownRemaining > 0 ? (
-                    `${Math.floor(cooldownRemaining / 60)}:${(cooldownRemaining % 60).toString().padStart(2, '0')}`
+                    `${Math.floor(cooldownRemaining / 60)}:${(cooldownRemaining % 60).toString().padStart(2, "0")}`
                   ) : (
                     <Send className="w-5 h-5 md:w-6 md:h-6" />
                   )}
                 </button>
+                {inputLimitError && (
+                  <p className="mt-2 pl-1 font-body text-xs text-red-600">
+                    Please do not exceed 800 characters.
+                  </p>
+                )}
               </form>
             </div>
           </div>

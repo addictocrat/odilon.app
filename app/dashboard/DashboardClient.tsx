@@ -4,12 +4,14 @@ import React, { useState } from "react";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { Chat } from "@/lib/db/schema";
 
 interface DashboardClientProps {
   children: React.ReactNode;
+  initialConversations?: Chat[];
 }
 
-export function DashboardClient({ children }: DashboardClientProps) {
+export function DashboardClient({ children, initialConversations }: DashboardClientProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
@@ -21,7 +23,7 @@ export function DashboardClient({ children }: DashboardClientProps) {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <ChatSidebar />
+        <ChatSidebar initialData={initialConversations} />
 
         {/* Toggle button for mobile */}
         <button

@@ -10,12 +10,12 @@ import { Sparkles, MessageSquare, Trash2 } from "lucide-react";
 
 import { useChats, useDeleteChat } from "@/hooks/queries/useChats";
 
-export function ChatSidebar() {
+export function ChatSidebar({ initialData }: { initialData?: Chat[] }) {
   const router = useRouter();
   const params = useParams();
   const currentChatId = params.id as string;
 
-  const { data: conversations = [], isLoading } = useChats();
+  const { data: conversations = [], isLoading } = useChats(initialData);
   const deleteMutation = useDeleteChat();
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {

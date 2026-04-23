@@ -37,7 +37,7 @@ export default async function DashboardPage() {
   const vanGoghPaintings = vanGoghPaintingsResult.paintings;
 
   return (
-    <DashboardClient>
+    <DashboardClient initialConversations={conversations}>
       <main className="flex flex-col items-center text-center space-y-12">
         <div className="space-y-4">
           <h1 className="font-logo text-7xl text-odilon-logo lowercase tracking-tighter">

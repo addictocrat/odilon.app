@@ -12,10 +12,36 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
+    const MAX_INPUT_CHARS = 800;
     const session = await getSession();
     const body = await req.json();
-    const { messages: bodyMessages, artwork, chatId, model: bodyModel, profile } = body;
-    const messages = bodyMessages || [];
+    const {
+      messages: bodyMessages,
+      artwork,
+      chatId,
+      model: bodyModel,
+      profile,
+    } = body;
+    let messages = bodyMessages || [];
+
+    // Server-side character limit check.
+    const lastUserMessage = [...messages]
+      .reverse()
+      .find((m) => m.role === "user");
+    if (lastUserMessage) {
+      const content =
+        typeof lastUserMessage.content === "string"
+          ? lastUserMessage.content
+          : "";
+      if (content.trim().length > MAX_INPUT_CHARS) {
+        return new Response(
+          JSON.stringify({
+            error: "Message too long. Please limit to 800 characters.",
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+    }
 
     console.log("Chat API Request:", {
       messageCount: messages.length,
@@ -28,13 +54,13 @@ export async function POST(req: Request) {
 
     // Rate Limiting Check: max 10 messages per 3 minutes
     const userMessagesInSession = messages.filter(
-      (m: any) => m.role === "user" && m.createdAt
+      (m: any) => m.role === "user" && m.createdAt,
     );
     if (userMessagesInSession.length > 10) {
       const now = new Date().getTime();
       const threeMinsAgo = now - 3 * 60 * 1000;
       const recentMessages = userMessagesInSession.filter(
-        (m: any) => new Date(m.createdAt).getTime() > threeMinsAgo
+        (m: any) => new Date(m.createdAt).getTime() > threeMinsAgo,
       );
 
       if (recentMessages.length > 2) {
@@ -42,7 +68,7 @@ export async function POST(req: Request) {
           JSON.stringify({
             error: "Too many messages. Please wait before conversing again.",
           }),
-          { status: 429, headers: { "Content-Type": "application/json" } }
+          { status: 429, headers: { "Content-Type": "application/json" } },
         );
       }
     }
@@ -93,7 +119,8 @@ export async function POST(req: Request) {
     }
 
     let systemPrompt =
-      basePrompt + "\n\nNEVER output raw Javascript, code, or mention your AI status.";
+      basePrompt +
+      "\n\nNEVER output raw Javascript, code, or mention your AI status.";
 
     if (artwork) {
       systemPrompt += `\n\nCURRENT CONTEXT: You are standing in front of "${artwork.title}" with the user.

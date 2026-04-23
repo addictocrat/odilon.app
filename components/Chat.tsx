@@ -24,7 +24,8 @@ function ChatMessage({
   const textRef = useRef<HTMLDivElement>(null);
   const isUser = message.role === "user";
   const content = message.content || message.text;
-  const isStreaming = isLast && (status === "streaming" || status === "submitted");
+  const isStreaming =
+    isLast && (status === "streaming" || status === "submitted");
 
   useGSAP(
     () => {
@@ -32,9 +33,9 @@ function ChatMessage({
       // to avoid re-splitting every single chunk update which would be jarring/expensive.
       if (isUser || !textRef.current || isStreaming || !content) return;
 
-      const split = new SplitText(textRef.current, { 
+      const split = new SplitText(textRef.current, {
         type: "words",
-        wordsClass: "inline-block" // Ensures words behave well during translation
+        wordsClass: "inline-block", // Ensures words behave well during translation
       });
 
       gsap.from(split.words, {
@@ -90,13 +91,21 @@ export default function Chat() {
   const isLoading = status === "streaming" || status === "submitted";
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const getWordCount = (text: string) => {
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
   };
 
+  const wordCount = getWordCount(input);
+  const isOverLimit = wordCount > 300;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input || isLoading) return;
+    if (!input || isLoading || isOverLimit) return;
+
     sendMessage({ text: input });
     setInput("");
   };
@@ -126,33 +135,45 @@ export default function Chat() {
       </div>
 
       <form onSubmit={handleSubmit} className="relative mt-auto">
-        <input
-          value={input}
-          placeholder="What do these brushstrokes mean...?"
-          onChange={handleInputChange}
-          className="w-full p-5 pr-14 rounded-2xl border border-odilon-accent/30 focus:outline-none focus:ring-2 focus:ring-odilon-accent/50 bg-background/80 backdrop-blur-md shadow-inner transition-all placeholder:text-foreground/40"
-          disabled={isLoading}
-        />
-        <button
-          type="submit"
-          disabled={isLoading || !input}
-          className="absolute right-3 top-3 p-3 bg-odilon-accent text-brand-primary rounded-xl hover:bg-odilon-accent/90 disabled:opacity-30 transition-all active:scale-95 shadow-md group border border-odilon-logo/10"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="20"
-            height="20"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+        <div className="relative">
+          <input
+            value={input}
+            placeholder="What do these brushstrokes mean...?"
+            onChange={handleInputChange}
+            className={cn(
+              "w-full p-5 pr-14 rounded-2xl border bg-background/80 backdrop-blur-md shadow-inner transition-all placeholder:text-foreground/40",
+              isOverLimit
+                ? "border-red-500 focus:ring-red-500/50"
+                : "border-odilon-accent/30 focus:outline-none focus:ring-2 focus:ring-odilon-accent/50",
+            )}
+            disabled={isLoading}
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !input || isOverLimit}
+            className="absolute right-3 top-3 p-3 bg-odilon-accent text-brand-primary rounded-xl hover:bg-odilon-accent/90 disabled:opacity-30 transition-all active:scale-95 shadow-md group border border-odilon-logo/10"
           >
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 7 11 2 7 22 2"></polygon>
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 7 11 2 7 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        {isOverLimit && (
+          <p className="absolute -bottom-6 left-2 text-[11px] text-red-500 font-medium animate-pulse">
+            Please limit your message to 300 words ({wordCount}/300)
+          </p>
+        )}
       </form>
     </div>
   );
