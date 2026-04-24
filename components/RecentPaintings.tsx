@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useChats, useCreateConversation } from "@/hooks/queries/useChats";
+import { MasonryGrid } from "./MasonryGrid";
 
 interface RecentPaintingsProps {
   conversations: Chat[];
@@ -40,7 +41,7 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
     <button
       onClick={handleStartChat}
       disabled={isCreating}
-      className="group relative w-12 h-12 md:w-16 md:h-16 rounded-sm overflow-hidden border border-[#483434]/10 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-500 disabled:opacity-50 cursor-pointer bg-transparent"
+      className="group relative w-28 h-28 md:w-32 md:h-32 rounded-sm overflow-hidden border border-[#483434]/10 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-500 disabled:opacity-50 cursor-pointer bg-transparent"
       title={painting.title}
     >
       {painting.imageId ? (
@@ -65,15 +66,11 @@ export function SuggestedPaintings({ paintings }: { paintings: Painting[] }) {
   if (paintings.length === 0) return null;
 
   return (
-    <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       <h3 className="font-header text-[10px] uppercase tracking-[0.3em] text-[#483434]/40">
         Discover a painting
       </h3>
-      <div className="flex items-center justify-center gap-3 flex-wrap">
-        {paintings.slice(0, 8).map((painting) => (
-          <EmptyStatePaintingCard key={painting.id} painting={painting} />
-        ))}
-      </div>
+      <MasonryGrid paintings={paintings} compact />
     </div>
   );
 }
