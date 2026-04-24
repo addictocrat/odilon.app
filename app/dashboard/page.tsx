@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient initialConversations={conversations}>
-      <main className="grid grid-cols-2 gap-8 w-full items-center">
+      <main className="grid grid-cols-2 gap-8 w-full items-start">
         {/* Left column */}
         <div className="flex flex-col space-y-8">
           <RecentPaintings
