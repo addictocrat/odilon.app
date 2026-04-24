@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient initialConversations={conversations}>
-      <main className="grid grid-cols-2 gap-8 w-full items-start">
+      <main className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full items-start">
         {/* Left column */}
         <div className="flex flex-col space-y-8">
           <RecentPaintings
@@ -86,8 +86,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Right column */}
-        <div className="min-w-0">
+        {/* Right column - hidden on mobile */}
+        <div className="hidden md:block min-w-0">
           <SuggestedPaintings paintings={discoverPaintings} />
         </div>
       </main>
