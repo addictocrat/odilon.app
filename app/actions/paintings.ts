@@ -120,6 +120,13 @@ export async function getLibraryPaintings(params: {
   };
 }
 
+export async function getDiscoverPaintings(limit: number = 8) {
+  return db.query.paintings.findMany({
+    limit,
+    orderBy: [desc(paintings.createdAt)],
+  });
+}
+
 export async function getUniqueArtists() {
   const results = await db
     .select({ artist: paintings.artistDisplay })

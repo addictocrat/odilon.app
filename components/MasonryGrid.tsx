@@ -6,9 +6,10 @@ import { PaintingCard } from "./PaintingCard";
 
 interface MasonryGridProps {
   paintings: Painting[];
+  compact?: boolean;
 }
 
-export function MasonryGrid({ paintings }: MasonryGridProps) {
+export function MasonryGrid({ paintings, compact = false }: MasonryGridProps) {
   if (paintings.length === 0) {
     return (
       <div className="w-full py-24 flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-1000 px-4 text-center">
@@ -19,6 +20,18 @@ export function MasonryGrid({ paintings }: MasonryGridProps) {
           We couldn't find any masterpieces matching your vision. Try searching
           for a different artist or title.
         </p>
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="w-full">
+        <div className="columns-2 md:columns-3 gap-2 [&_.break-inside-avoid]:!mb-2">
+          {paintings.map((painting) => (
+            <PaintingCard key={painting.id} painting={painting} />
+          ))}
+        </div>
       </div>
     );
   }

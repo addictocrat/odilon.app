@@ -8,8 +8,9 @@ After implementation is done, do these:
 2) don't forget to remove any artifact files you have temporarily created during implementation
 3) recommend a git commit title for the changes you have made
 4) don't change anything else unless explicitly asked
+5) when the task is done, try the feature and make sure it works as expected, if not do what is necessary to fix it
 
 conditional:
 
-5) run pnpm db:generate and pnpm db:push if you've made any changes to the db schema
-6) update AGENTS.md to align with the changes if required (preferred: don't modify for minor changes)
+6) run pnpm db:generate and pnpm db:push if you've made any changes to the db schema
+7) update AGENTS.md to align with the changes if required (preferred: don't modify for minor changes)

@@ -43,8 +43,8 @@ export function DashboardClient({ children, initialConversations }: DashboardCli
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative scrollbar-hide">
-        <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 lg:p-24">
-          <div className="w-full max-w-4xl relative">{children}</div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12">
+          <div className="w-full max-w-5xl relative">{children}</div>
         </div>
 
         {/* Decorative frame - adjusted to be inside the main content area */}
