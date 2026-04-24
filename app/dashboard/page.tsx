@@ -9,8 +9,8 @@ import { redirect } from "next/navigation";
 import { PaintingSearch } from "@/components/PaintingSearch";
 import { DashboardClient } from "./DashboardClient";
 import { getConversations } from "@/app/actions/chat";
-import { RecentPaintings } from "@/components/RecentPaintings";
-import { getLibraryPaintings } from "@/app/actions/paintings";
+import { RecentPaintings, SuggestedPaintings } from "@/components/RecentPaintings";
+import { getLibraryPaintings, getDiscoverPaintings } from "@/app/actions/paintings";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -36,22 +36,19 @@ export default async function DashboardPage() {
   });
   const vanGoghPaintings = vanGoghPaintingsResult.paintings;
 
+  const discoverPaintings = await getDiscoverPaintings(8);
+
   return (
     <DashboardClient initialConversations={conversations}>
       <main className="flex flex-col items-center text-center space-y-12">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h1 className="font-logo text-7xl text-odilon-logo lowercase tracking-tighter">
             odilon
           </h1>
-          <div className="space-y-2">
-            <h2 className="font-header text-3xl text-odilon-logo">
-              Welcome back, {user.name || "friend"}
-            </h2>
-            <p className="font-body text-odilon-logo/60 max-w-md mx-auto">
-              This is your sanctuary. The place where art and conversation
-              converge.
-            </p>
-          </div>
+          <h2 className="font-header text-3xl text-odilon-logo">
+            Welcome back, {user.name || "friend"}
+          </h2>
+          <SuggestedPaintings paintings={discoverPaintings} />
         </div>
 
         <div className="w-full max-w-2xl mx-auto space-y-8">

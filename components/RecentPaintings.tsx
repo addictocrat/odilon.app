@@ -61,6 +61,23 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
   );
 }
 
+export function SuggestedPaintings({ paintings }: { paintings: Painting[] }) {
+  if (paintings.length === 0) return null;
+
+  return (
+    <div className="flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <h3 className="font-header text-[10px] uppercase tracking-[0.3em] text-[#483434]/40">
+        Discover a painting
+      </h3>
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        {paintings.slice(0, 8).map((painting) => (
+          <EmptyStatePaintingCard key={painting.id} painting={painting} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RecentPaintings({
   conversations: initialConversations,
   emptyStatePaintings = [],
