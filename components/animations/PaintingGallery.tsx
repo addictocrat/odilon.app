@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Sparkle } from "lucide-react";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 
-import { useScrollStore } from "@/hooks/useScrollStore";
 import { PAINTINGS, getPaintingPath } from "@/lib/paintings";
 
-gsap.registerPlugin(useGSAP);
+gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Pre-calculated grid spots that avoid the center logo area.
 const gridSpots = [
@@ -147,24 +147,27 @@ export const PaintingGallery = () => {
   // Scroll-driven parallax
   useGSAP(
     () => {
-      const unsubscribeScroll = useScrollStore.subscribe((state) => {
-        const smoothedY = state.smoothedY;
+      ScrollTrigger.create({
+        trigger: "main",
+        start: "top top",
+        end: "bottom bottom",
+        onUpdate: (self) => {
+          const scrollY = self.scroll();
 
-        paintingScrollRefs.current.forEach((el, i) => {
-          if (!el) return;
-          const { depth } = paintingConfigs[i];
-          const speed = 0.5 + depth * 2;
-          el.style.transform = `translateY(${-smoothedY * speed}px)`;
-        });
+          paintingScrollRefs.current.forEach((el, i) => {
+            if (!el) return;
+            const { depth } = paintingConfigs[i];
+            const speed = 0.5 + depth * 2;
+            el.style.transform = `translateY(${-scrollY * speed}px)`;
+          });
 
-        if (sparkleScrollRef.current) {
-          const depth = sparkleProxy.current.depth;
-          const speed = 0.5 + depth * 2;
-          sparkleScrollRef.current.style.transform = `translateY(${-smoothedY * speed}px)`;
-        }
+          if (sparkleScrollRef.current) {
+            const depth = sparkleProxy.current.depth;
+            const speed = 0.5 + depth * 2;
+            sparkleScrollRef.current.style.transform = `translateY(${-scrollY * speed}px)`;
+          }
+        },
       });
-
-      return () => unsubscribeScroll();
     },
     { scope: containerRef },
   );
@@ -384,7 +387,7 @@ export const PaintingGallery = () => {
                 <div
                   className="w-full h-full shadow-2xl overflow-hidden"
                   style={{
-                    transform: `scale(${config.scale}) rotate(${config.rotation}deg)`,
+                    transform: `scale(calc(${config.scale} * var(--app-scale))) rotate(${config.rotation}deg)`,
                     transformStyle: "preserve-3d",
                   }}
                 >

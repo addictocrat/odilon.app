@@ -20,6 +20,25 @@
   /* darker tone #919F88 */
 
   /* blue #2b7fff */
+  --app-scale: 1;
+}
+
+@media (max-height: 950px) {
+  :root {
+    --app-scale: 0.95;
+  }
+}
+
+@media (max-height: 850px) {
+  :root {
+    --app-scale: 0.85;
+  }
+}
+
+@media (max-height: 750px) {
+  :root {
+    --app-scale: 0.75;
+  }
 }
 
 @theme inline {

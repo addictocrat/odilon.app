@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
+import { useGSAP } from "@gsap/react";
+
 import { PaintingGallery } from "@/components/animations/PaintingGallery";
 import { ScrollGuides } from "@/components/animations/ScrollGuides";
 import { HeroSection } from "@/components/homepagesections/HeroSection";
 import { AppDescription } from "@/components/homepagesections/AppDescription";
 import { CTASection } from "@/components/homepagesections/CTASection";
-import { useScrollStore } from "@/hooks/useScrollStore";
+
+gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
 export default function Home() {
   const [logoOpacity, setLogoOpacity] = useState(1);
@@ -15,47 +21,22 @@ export default function Home() {
   const [logoReverse, setLogoReverse] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
 
-  // Keep track of the current animation frame to allow cancellation
-  const [scrollFrame, setScrollFrame] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const smoothScrollTo = (target: number, onComplete?: () => void) => {
     if (typeof window === "undefined") return;
 
-    // Cancel any existing scroll animation
-    if (scrollFrame) {
-      cancelAnimationFrame(scrollFrame);
-    }
-
     setIsScrolling(true);
-    const start = window.scrollY;
-    const distance = target - start;
-    const duration = 1600;
-    let startTime: number | null = null;
-
-    // Ease In Out Quint
-    const easeInOutQuint = (t: number) =>
-      t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * --t * t * t * t * t;
-
-    const step = (currentTime: number) => {
-      if (startTime === null) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      const progress = Math.min(timeElapsed / duration, 1);
-
-      const ease = easeInOutQuint(progress);
-      window.scrollTo(0, start + distance * ease);
-
-      if (timeElapsed < duration) {
-        const frame = requestAnimationFrame(step);
-        setScrollFrame(frame);
-      } else {
+    gsap.to(window, {
+      scrollTo: target,
+      duration: 1.6,
+      ease: "power4.inOut", // quint.inOut equivalent or custom
+      onComplete: () => {
         setIsScrolling(false);
-        setScrollFrame(null);
         onComplete?.();
-      }
-    };
-
-    const firstFrame = requestAnimationFrame(step);
-    setScrollFrame(firstFrame);
+      },
+      overwrite: true,
+    });
   };
 
   const handleScrollToDesc = () => {
@@ -63,71 +44,61 @@ export default function Home() {
     smoothScrollTo(vh * 2);
   };
 
-  useEffect(() => {
-    let lastWheelTime = 0;
-    const threshold = 800; // ms between distinct scrolls
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-
-      const now = Date.now();
-      if (now - lastWheelTime < threshold || isScrolling) return;
-
-      const currentScroll = window.scrollY;
+  useGSAP(
+    () => {
       const vh = window.innerHeight;
       const stages = [0, vh * 2, vh * 4];
+      const threshold = 800; // ms between distinct scrolls
+      let lastWheelTime = 0;
 
-      if (e.deltaY > 0) {
-        // Find next stage
-        const nextStage = stages.find((s) => s > currentScroll + 50);
-        if (nextStage !== undefined) {
-          smoothScrollTo(nextStage);
-          lastWheelTime = now;
-        }
-      } else if (e.deltaY < 0) {
-        // Find prev stage
-        const prevStage = [...stages]
-          .reverse()
-          .find((s) => s < currentScroll - 50);
-        if (prevStage !== undefined) {
-          smoothScrollTo(prevStage);
-          lastWheelTime = now;
-        }
-      }
-    };
+      // --- 1. Opacity Orchestration via ScrollTrigger ---
+      const stateProxy = {
+        logoOpacity: 1,
+        descOpacity: 0,
+        ctaOpacity: 0,
+      };
 
-    window.addEventListener("wheel", onWheel, { passive: false });
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top top",
+          end: "bottom bottom", 
+          scrub: true,
+          onUpdate: (self) => {
+            setLogoOpacity(stateProxy.logoOpacity);
+            setDescOpacity(stateProxy.descOpacity);
+            setCtaOpacity(stateProxy.ctaOpacity);
+            setLogoReverse(window.scrollY >= 10);
+          },
+        },
+      });
 
-    let touchStartY = 0;
-    const onTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY;
-    };
+      // Map segments to the 4vh timeline
+      // Logo Fade Out between 0.6vh and 1.2vh
+      tl.to(stateProxy, { logoOpacity: 0, ease: "none", duration: 0.6 }, 0.6);
 
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-    };
+      // Description Fade In between 1.2vh and 1.8vh
+      tl.to(stateProxy, { descOpacity: 1, ease: "none", duration: 0.6 }, 1.2);
+      // Description Fade Out between 2.4vh and 2.8vh
+      tl.to(stateProxy, { descOpacity: 0, ease: "none", duration: 0.4 }, 2.4);
 
-    const onTouchEnd = (e: TouchEvent) => {
-      const touchEndY = e.changedTouches[0].clientY;
-      const deltaY = touchStartY - touchEndY;
+      // CTA Fade In between 3.2vh and 3.7vh
+      tl.to(stateProxy, { ctaOpacity: 1, ease: "none", duration: 0.5 }, 3.2);
 
-      const now = Date.now();
-      if (now - lastWheelTime < threshold || isScrolling) return;
+      // --- 2. Scroll Hijacking Logic ---
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastWheelTime < threshold || isScrolling) return;
 
-      const currentScroll = window.scrollY;
-      const vh = window.innerHeight;
-      const stages = [0, vh * 2, vh * 4];
-
-      if (Math.abs(deltaY) > 50) {
-        if (deltaY > 0) {
-          // Swipe up -> Scroll down
+        const currentScroll = window.scrollY;
+        if (e.deltaY > 0) {
           const nextStage = stages.find((s) => s > currentScroll + 50);
           if (nextStage !== undefined) {
             smoothScrollTo(nextStage);
             lastWheelTime = now;
           }
-        } else {
-          // Swipe down -> Scroll up
+        } else if (e.deltaY < 0) {
           const prevStage = [...stages]
             .reverse()
             .find((s) => s < currentScroll - 50);
@@ -136,88 +107,67 @@ export default function Home() {
             lastWheelTime = now;
           }
         }
-      }
-    };
+      };
 
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
+      let touchStartY = 0;
+      const onTouchStart = (e: TouchEvent) => {
+        touchStartY = e.touches[0].clientY;
+      };
 
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [isScrolling]);
+      const onTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+      };
 
-  useEffect(() => {
-    const unsubscribe = useScrollStore.subscribe((state) => {
-      const y = state.smoothedY;
-      const vh = window.innerHeight;
+      const onTouchEnd = (e: TouchEvent) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchStartY - touchEndY;
+        const now = Date.now();
+        if (now - lastWheelTime < threshold || isScrolling) return;
 
-      // Sync Logo Reverse state with scroll position
-      // Trigger reverse immediately as we scroll away from the top
-      if (state.scrollY < 10) {
-        setLogoReverse(false);
-      } else {
-        setLogoReverse(true);
-      }
+        const currentScroll = window.scrollY;
+        if (Math.abs(deltaY) > 50) {
+          if (deltaY > 0) {
+            const nextStage = stages.find((s) => s > currentScroll + 50);
+            if (nextStage !== undefined) {
+              smoothScrollTo(nextStage);
+              lastWheelTime = now;
+            }
+          } else {
+            const prevStage = [...stages]
+              .reverse()
+              .find((s) => s < currentScroll - 50);
+            if (prevStage !== undefined) {
+              smoothScrollTo(prevStage);
+              lastWheelTime = now;
+            }
+          }
+        }
+      };
 
-      // Logo Fade Out between 0.6vh and 1.2vh
-      const logoStart = vh * 0.6;
-      const logoEnd = vh * 1.2;
-      const lOpacity = Math.max(
-        0,
-        Math.min(1, 1 - (y - logoStart) / (logoEnd - logoStart)),
-      );
-      setLogoOpacity(lOpacity);
+      window.addEventListener("wheel", onWheel, { passive: false });
+      window.addEventListener("touchstart", onTouchStart, { passive: true });
+      window.addEventListener("touchmove", onTouchMove, { passive: false });
+      window.addEventListener("touchend", onTouchEnd, { passive: true });
 
-      // Description Fade In between 1.2vh and 1.8vh
-      const descStart = vh * 1.2;
-      const descEnd = vh * 1.8;
-      // Also fade OUT at 2.4vh
-      const descOutStart = vh * 2.4;
-      const descOutEnd = vh * 2.8;
+      // Lock scroll for the home page's automated experience
+      document.body.style.overflowY = "hidden";
 
-      let dOpacity = Math.max(
-        0,
-        Math.min(1, (y - descStart) / (descEnd - descStart)),
-      );
-      if (y > descOutStart) {
-        dOpacity = Math.max(
-          0,
-          Math.min(
-            dOpacity,
-            1 - (y - descOutStart) / (descOutEnd - descOutStart),
-          ),
-        );
-      }
-      setDescOpacity(dOpacity);
-
-      // CTA Fade In between 3.2vh and 3.8vh
-      const ctaStart = vh * 3.2;
-      const ctaEnd = vh * 3.7;
-      const cOpacity = Math.max(
-        0,
-        Math.min(1, (y - ctaStart) / (ctaEnd - ctaStart)),
-      );
-      setCtaOpacity(cOpacity);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    // Lock scroll for the home page's automated experience
-    document.body.style.overflowY = "hidden";
-    return () => {
-      document.body.style.overflowY = "auto";
-    };
-  }, []);
+      return () => {
+        window.removeEventListener("wheel", onWheel);
+        window.removeEventListener("touchstart", onTouchStart);
+        window.removeEventListener("touchmove", onTouchMove);
+        window.removeEventListener("touchend", onTouchEnd);
+        document.body.style.overflowY = "auto";
+      };
+    },
+    { scope: containerRef, dependencies: [isScrolling] },
+  );
 
   return (
-    <main className="relative bg-background min-h-[500vh] touch-none">
+    <main 
+      ref={containerRef}
+      className="relative bg-background min-h-[500vh] touch-none"
+    >
       {/* Visual Guides */}
       <ScrollGuides />
 
@@ -239,11 +189,20 @@ export default function Home() {
           </svg>
         </div>
 
+        {/* CTA Background Layer - outside the scaling container to ensure it fills the screen */}
+        <div 
+          className="absolute inset-0 z-[5] pointer-events-none"
+          style={{ backgroundColor: "#483434", opacity: ctaOpacity }}
+        />
+
         {/* Floating Paintings Container */}
         <PaintingGallery />
 
         {/* Orchestrated Content */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center">
+        <div 
+          className="relative z-10 w-full h-full flex items-center justify-center transition-transform duration-500 will-change-transform"
+          style={{ transform: "scale(var(--app-scale))", transformOrigin: "center" }}
+        >
           <HeroSection
             opacity={logoOpacity}
             reverseTrigger={logoReverse}

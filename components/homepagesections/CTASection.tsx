@@ -12,7 +12,7 @@ export const CTASection = ({ opacity }: { opacity: number }) => {
   return (
     <div 
       className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6 py-20"
-      style={{ opacity, backgroundColor: "#483434" }}
+      style={{ opacity }}
     >
       <MasonryGrid opacity={opacity} />
 

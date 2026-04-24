@@ -436,12 +436,12 @@ export function ArtworkChatClient({
         <div className="flex-1 flex overflow-hidden">
           {/* Left Side: Artwork Details (Desktop only) */}
           <aside className="hidden xl:flex flex-col w-80 p-8 border-r border-[#483434]/5 bg-[#E7D4B5]/10 overflow-y-auto scrollbar-hide">
-            <div className="relative w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
+            <div className="flex-shrink-0 relative w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
               {artwork.image_id ? (
                 <img
                   src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
                   alt={artwork.title}
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#483434]/20 font-header uppercase tracking-tighter text-2xl">
