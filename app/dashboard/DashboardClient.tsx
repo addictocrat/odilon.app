@@ -19,7 +19,7 @@ export function DashboardClient({ children, initialConversations }: DashboardCli
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 lg:relative lg:block transition-all duration-300 transform",
+          "fixed inset-y-0 left-0 z-[110] lg:relative lg:block transition-all duration-300 transform",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -43,15 +43,11 @@ export function DashboardClient({ children, initialConversations }: DashboardCli
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto relative scrollbar-hide">
-        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12 relative">
+          {/* Decorative frame - absolute inside content area, grows with content */}
+          <div className="hidden md:block absolute inset-8 md:inset-12 border border-odilon-logo/5 pointer-events-none" />
           <div className="w-full max-w-5xl relative">{children}</div>
         </div>
-
-        {/* Decorative frame - adjusted to be inside the main content area */}
-        <div
-          className="hidden md:block fixed right-12 top-12 bottom-12 left-[calc(20rem+3rem)] border border-odilon-logo/5 pointer-events-none transition-all duration-300"
-          style={{ left: isSidebarOpen ? "calc(20rem + 3rem)" : "3rem" }}
-        />
       </div>
 
       {/* Mobile Sidebar Overlay */}
