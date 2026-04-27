@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Send, Sparkles, Menu, Share2, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, parseArtistName } from "@/lib/utils";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { updateConversationMessages } from "@/app/actions/chat";
 import gsap from "gsap";
@@ -385,9 +385,8 @@ export function ArtworkChatClient({
 
   const ARTIST_PREFIXES =
     /^(Imitator of|After|Follower of|Circle of|Workshop of|Studio of|School of|Attributed to|Style of)\s+/i;
-  const rawArtist = artwork.artist_display?.split(" (")[0] ?? "";
   const artistName =
-    rawArtist.replace(ARTIST_PREFIXES, "").trim() || "The Voice of Art";
+    parseArtistName(artwork.artist_display).replace(ARTIST_PREFIXES, "").trim() || "The Voice of Art";
 
   return (
     <div className="flex h-screen bg-[#F6E6CB] overflow-hidden">
@@ -417,7 +416,7 @@ export function ArtworkChatClient({
                 {artwork.title}
               </h1>
               <p className="font-body text-[10px] md:text-xs text-[#6B4F4F]">
-                {artwork.artist_display}
+                {parseArtistName(artwork.artist_display)}
               </p>
             </div>
           </div>

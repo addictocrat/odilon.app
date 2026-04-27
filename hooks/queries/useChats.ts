@@ -16,6 +16,8 @@ export function useChats(initialData?: Chat[]) {
       return data as Chat[];
     },
     initialData,
+    initialDataUpdatedAt: initialData ? Date.now() : undefined,
+    staleTime: 30 * 1000,
   });
 }
 

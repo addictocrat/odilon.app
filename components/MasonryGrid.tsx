@@ -29,7 +29,7 @@ export function MasonryGrid({ paintings, compact = false }: MasonryGridProps) {
       <div className="w-full">
         <div className="columns-2 md:columns-3 gap-2 [&_.break-inside-avoid]:!mb-2">
           {paintings.map((painting) => (
-            <PaintingCard key={painting.id} painting={painting} />
+            <PaintingCard key={painting.id} painting={painting} compact />
           ))}
         </div>
       </div>

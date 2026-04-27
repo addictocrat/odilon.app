@@ -42,16 +42,20 @@ export default async function RootLayout({
 
   let isAdmin = false;
   if (session) {
-    const [currentUser] = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, session.userId));
-      
-    if (currentUser) {
-      const adminEmails = process.env.ADMIN_EMAILS
-        ? process.env.ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase())
-        : [];
-      isAdmin = adminEmails.includes(currentUser.email.toLowerCase());
+    try {
+      const [currentUser] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, session.userId));
+
+      if (currentUser) {
+        const adminEmails = process.env.ADMIN_EMAILS
+          ? process.env.ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase())
+          : [];
+        isAdmin = adminEmails.includes(currentUser.email.toLowerCase());
+      }
+    } catch {
+      // DB unavailable or user no longer exists — default to non-admin
     }
   }
 

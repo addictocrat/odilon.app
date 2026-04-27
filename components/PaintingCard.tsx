@@ -6,13 +6,14 @@ import { createConversation } from "@/app/actions/chat";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, MessageSquare } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, parseArtistName } from "@/lib/utils";
 
 interface PaintingCardProps {
   painting: Painting;
+  compact?: boolean;
 }
 
-export function PaintingCard({ painting }: PaintingCardProps) {
+export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
@@ -45,12 +46,15 @@ export function PaintingCard({ painting }: PaintingCardProps) {
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => setIsHovered(!isHovered)}
     >
-      <div className="relative aspect-auto">
+      <div className={cn("relative overflow-hidden", compact ? "aspect-square" : "aspect-auto")}>
         {painting.imageId ? (
           <img
             src={`https://www.artic.edu/iiif/2/${painting.imageId}/full/400,/0/default.jpg`}
             alt={painting.title}
-            className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
+            className={cn(
+              "w-full transition-transform duration-700 group-hover:scale-105",
+              compact ? "h-full object-cover" : "h-auto object-cover",
+            )}
             loading="lazy"
           />
         ) : (
@@ -78,7 +82,7 @@ export function PaintingCard({ painting }: PaintingCardProps) {
               {painting.title}
             </h3>
             <p className="font-body text-[8px] sm:text-xs text-odilon-card/70 uppercase tracking-widest truncate">
-              {painting.artistDisplay}
+              {parseArtistName(painting.artistDisplay)}
             </p>
             <div className="">
               <button
