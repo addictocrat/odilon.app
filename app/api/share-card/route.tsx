@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
                 "User-Agent": "OdilonApp/1.0 (https://odilon.app)",
                 Accept: "image/jpeg,image/webp,*/*",
                 "Cache-Control": "no-cache",
+                Referer: "https://odilon.app/",
               },
               cache: "no-store",
             })
