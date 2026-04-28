@@ -21,12 +21,12 @@ export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
   const handleStartChat = async () => {
     setIsCreating(true);
     try {
-      // Create conversation expects the artwork object structure
       const artwork = {
-        id: Number(painting.id),
+        id: painting.id,
         title: painting.title,
         artist_display: painting.artistDisplay,
         image_id: painting.imageId,
+        image_url: painting.imageUrl,
         ...((painting.fullData as any) || {}),
       };
       const chatId = await createConversation(artwork);
@@ -47,9 +47,9 @@ export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
       onClick={() => setIsHovered(!isHovered)}
     >
       <div className={cn("relative overflow-hidden", compact ? "aspect-square" : "aspect-auto")}>
-        {painting.imageId ? (
+        {painting.imageUrl ? (
           <img
-            src={`https://www.artic.edu/iiif/2/${painting.imageId}/full/400,/0/default.jpg`}
+            src={painting.imageUrl}
             alt={painting.title}
             className={cn(
               "w-full transition-transform duration-700 group-hover:scale-105",

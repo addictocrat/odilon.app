@@ -58,6 +58,7 @@ async function fetchFont(family: string): Promise<ArrayBuffer> {
 export async function POST(req: NextRequest) {
   const {
     imageId,
+    imageUrl: directImageUrl,
     question,
     answer,
     artworkTitle,
@@ -66,9 +67,8 @@ export async function POST(req: NextRequest) {
   } = await req.json();
 
   console.log("Generating share card for imageId:", imageId);
-  const artImageUrl = imageId
-    ? `https://www.artic.edu/iiif/2/${imageId}/full/600,/0/default.jpg`
-    : null;
+  const artImageUrl = directImageUrl ||
+    (imageId ? `https://www.artic.edu/iiif/2/${imageId}/full/600,/0/default.jpg` : null);
 
   const artImageUrlFallback = imageId
     ? `https://artic.edu/iiif/2/${imageId}/full/600,/0/default.jpg`

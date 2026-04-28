@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
-import { getLibraryPaintings, getUniqueArtists, searchAndSyncArtworks } from "@/app/actions/paintings";
+import { getLibraryPaintings, getUniqueArtists, searchPaintings } from "@/app/actions/paintings";
 
 export const PAINTING_KEYS = {
   all: ["paintings"] as const,
@@ -32,8 +32,8 @@ export function useInfinitePaintings(filters: { search?: string; artist?: string
 
 export function useSearchArtworks() {
   return useMutation({
-    mutationFn: ({ query, limit }: { query: string; limit?: number }) => 
-      searchAndSyncArtworks(query, limit),
+    mutationFn: ({ query, limit }: { query: string; limit?: number }) =>
+      searchPaintings(query, limit),
   });
 }
 

@@ -25,6 +25,7 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
         title: painting.title,
         artist_display: painting.artistDisplay,
         image_id: painting.imageId,
+        image_url: painting.imageUrl,
         ...(painting.fullData as any),
       };
       const chatId = await createMutation.mutateAsync(artwork);
@@ -44,9 +45,9 @@ function EmptyStatePaintingCard({ painting }: { painting: Painting }) {
       className="group relative w-28 h-28 md:w-32 md:h-32 rounded-sm overflow-hidden border border-[#483434]/10 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-500 disabled:opacity-50 cursor-pointer bg-transparent"
       title={painting.title}
     >
-      {painting.imageId ? (
+      {painting.imageUrl ? (
         <img
-          src={`https://www.artic.edu/iiif/2/${painting.imageId}/full/200,/0/default.jpg`}
+          src={painting.imageUrl}
           alt={painting.title}
           className="object-cover w-full h-full transition-all duration-700"
         />
@@ -109,9 +110,9 @@ export function RecentPaintings({
                   className="group relative w-12 h-12 md:w-16 md:h-16 rounded-sm overflow-hidden border border-[#483434]/10 shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-500"
                   title={artwork.title}
                 >
-                  {artwork.image_id ? (
+                  {(artwork.image_url || artwork.image_id) ? (
                     <img
-                      src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/200,/0/default.jpg`}
+                      src={artwork.image_url || `https://www.artic.edu/iiif/2/${artwork.image_id}/full/200,/0/default.jpg`}
                       alt={artwork.title}
                       className="object-cover w-full h-full transition-all duration-700"
                     />

@@ -123,14 +123,20 @@ export async function POST(req: Request) {
       "\n\nNEVER output raw Javascript, code, or mention your AI status.";
 
     if (artwork) {
+      const date = artwork.date_display || artwork.objectDate || null;
+      const medium = artwork.medium_display || artwork.medium || null;
+      const origin = artwork.place_of_origin || artwork.country || null;
+      const about = artwork.description ||
+        (Array.isArray(artwork.tags) && artwork.tags.length
+          ? artwork.tags.map((t: { term: string }) => t.term).join(", ")
+          : null) ||
+        "A mysterious work of light and shadow.";
+
       systemPrompt += `\n\nCURRENT CONTEXT: You are standing in front of "${artwork.title}" with the user.
-Details: 
-- Artist: ${artwork.artist_display}
-- Date: ${artwork.date_display}
-- Medium: ${artwork.medium_display}
-- Origin: ${artwork.place_of_origin}
-- Description: ${artwork.description || "A mysterious work of light and shadow."}
- 
+Details:
+- Artist: ${artwork.artist_display}${date ? `\n- Date: ${date}` : ""}${medium ? `\n- Medium: ${medium}` : ""}${origin ? `\n- Origin: ${origin}` : ""}
+- About: ${about}
+
 The user's thoughts are focused on THIS specific masterpiece. Channel its history and emotion in your response.`;
     }
 

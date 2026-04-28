@@ -36,7 +36,8 @@ export default async function DashboardPage() {
   });
   const vanGoghPaintings = vanGoghPaintingsResult.paintings;
 
-  const discoverPaintings = await getDiscoverPaintings(10);
+  const chattedIds = conversations.map((c) => c.artworkId);
+  const discoverPaintings = await getDiscoverPaintings(10, chattedIds);
 
   return (
     <DashboardClient initialConversations={conversations}>

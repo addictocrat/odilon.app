@@ -14,14 +14,23 @@ import { toast } from "sonner";
 gsap.registerPlugin(useGSAP, SplitText);
 
 interface Artwork {
-  id: number;
+  id: string | number;
   title: string;
   artist_display: string;
-  image_id: string;
+  image_id?: string;
+  image_url?: string;
   description?: string;
+  // ArtIC fields
   medium_display?: string;
   date_display?: string;
   place_of_origin?: string;
+  // Met Museum fields (fallback)
+  medium?: string;
+  objectDate?: string;
+  country?: string;
+  creditLine?: string;
+  department?: string;
+  tags?: { term: string }[];
 }
 
 interface Message {
@@ -182,7 +191,9 @@ export function ArtworkChatClient({
       // Try to fetch image client-side to bypass potential server-side IP blocks
       let clientImageDataUrl = null;
       try {
-        const imageUrl = `https://www.artic.edu/iiif/2/${artwork.image_id}/full/600,/0/default.jpg`;
+        const imageUrl = artwork.image_url ||
+          (artwork.image_id ? `https://www.artic.edu/iiif/2/${artwork.image_id}/full/600,/0/default.jpg` : null);
+        if (!imageUrl) throw new Error("no image");
         const imgRes = await fetch(imageUrl);
         if (imgRes.ok) {
           const blob = await imgRes.blob();
@@ -207,6 +218,7 @@ export function ArtworkChatClient({
           question,
           answer,
           imageId: artwork.image_id,
+          imageUrl: artwork.image_url,
           artworkTitle: artwork.title,
           artistName,
           clientImageDataUrl,
@@ -436,9 +448,9 @@ export function ArtworkChatClient({
           {/* Left Side: Artwork Details (Desktop only) */}
           <aside className="hidden xl:flex flex-col w-80 p-8 border-r border-[#483434]/5 bg-[#E7D4B5]/10 overflow-y-auto scrollbar-hide">
             <div className="flex-shrink-0 relative w-full bg-[#483434]/5 rounded-sm overflow-hidden shadow-xl border border-[#483434]/10 group">
-              {artwork.image_id ? (
+              {(artwork.image_url || artwork.image_id) ? (
                 <img
-                  src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
+                  src={artwork.image_url || `https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`}
                   alt={artwork.title}
                   className="w-full h-auto"
                 />
@@ -454,23 +466,48 @@ export function ArtworkChatClient({
                 <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
                   Details
                 </h3>
-                <p className="font-body text-xs text-[#483434] font-medium leading-relaxed">
-                  {artwork.medium_display}
-                </p>
-                <p className="font-body text-xs text-[#6B4F4F] mt-1">
-                  {artwork.date_display}, {artwork.place_of_origin}
-                </p>
+                {(artwork.medium_display || artwork.medium) && (
+                  <p className="font-body text-xs text-[#483434] font-medium leading-relaxed">
+                    {artwork.medium_display || artwork.medium}
+                  </p>
+                )}
+                {(artwork.date_display || artwork.objectDate || artwork.place_of_origin || artwork.country) && (
+                  <p className="font-body text-xs text-[#6B4F4F] mt-1">
+                    {[
+                      artwork.date_display || artwork.objectDate,
+                      artwork.place_of_origin || artwork.country,
+                    ].filter(Boolean).join(", ")}
+                  </p>
+                )}
+                {artwork.creditLine && (
+                  <p className="font-body text-xs text-[#6B4F4F]/60 mt-1 italic-none">
+                    {artwork.creditLine}
+                  </p>
+                )}
               </div>
 
-              {artwork.description && (
+              {(artwork.description || artwork.tags?.length) && (
                 <div className="pt-4 border-t border-[#483434]/5">
                   <h3 className="font-header text-[10px] uppercase tracking-widest text-[#483434]/40 mb-2">
                     About
                   </h3>
-                  <div
-                    className="font-body text-xs text-[#6B4F4F] leading-relaxed line-clamp-6 hover:line-clamp-none transition-all duration-500 cursor-pointer"
-                    dangerouslySetInnerHTML={{ __html: artwork.description }}
-                  />
+                  {artwork.description ? (
+                    <div
+                      className="font-body text-xs text-[#6B4F4F] leading-relaxed line-clamp-6 hover:line-clamp-none transition-all duration-500 cursor-pointer"
+                      dangerouslySetInnerHTML={{ __html: artwork.description }}
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {artwork.tags!.map((tag, i) => (
+                        <span
+                          key={i}
+                          className="font-body text-[10px] px-2 py-0.5 bg-[#483434]/5 text-[#6B4F4F] rounded-full"
+                        >
+                          {tag.term}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

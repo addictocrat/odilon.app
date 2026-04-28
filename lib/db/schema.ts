@@ -68,10 +68,12 @@ export const chats = pgTable("chats", {
 // paintings
 // ─────────────────────────────────────────────
 export const paintings = pgTable("paintings", {
-  id: text("id").primaryKey(), // Using ArtIC ID as primary key
+  id: text("id").primaryKey(),
   title: text("title").notNull(),
   artistDisplay: text("artist_display"),
   imageId: text("image_id"),
+  imageUrl: text("image_url"),
+  source: text("source").notNull().default("artic"),
   dateDisplay: text("date_display"),
   mediumDisplay: text("medium_display"),
   placeOfOrigin: text("place_of_origin"),

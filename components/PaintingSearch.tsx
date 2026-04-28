@@ -6,12 +6,6 @@ import { useRouter } from "next/navigation";
 import { PAINTINGS } from "@/lib/paintings";
 import { toast } from "sonner";
 
-interface Artwork {
-  id: number;
-  title: string;
-  artist_display: string;
-  image_id: string;
-}
 
 interface PaintingSearchProps {
   className?: string;
@@ -19,6 +13,7 @@ interface PaintingSearchProps {
   placeholder?: string;
 }
 
+import { Painting } from "@/lib/db/schema";
 import { useAuth } from "@/hooks/queries/useAuth";
 import { useSearchArtworks } from "@/hooks/queries/usePaintings";
 import { useCreateConversation } from "@/hooks/queries/useChats";
@@ -29,7 +24,7 @@ export function PaintingSearch({
   placeholder,
 }: PaintingSearchProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Artwork[]>([]);
+  const [results, setResults] = useState<Painting[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -74,7 +69,7 @@ export function PaintingSearch({
     try {
       const limit = isLoggedIn ? 10 : 6;
       const data = await searchMutation.mutateAsync({ query: searchTerm, limit });
-      setResults(data as Artwork[] || []);
+      setResults((data as Painting[]) || []);
       setIsOpen(true);
     } catch (error) {
       console.error("Error searching artworks:", error);
@@ -87,7 +82,7 @@ export function PaintingSearch({
     searchArtworks(query);
   };
 
-  const handleSelect = async (artwork: Artwork) => {
+  const handleSelect = async (artwork: Painting) => {
     if (!isLoggedIn) {
       setIsOpen(false);
       router.push("/signup");
@@ -96,7 +91,21 @@ export function PaintingSearch({
     }
 
     try {
-      const chatId = await createMutation.mutateAsync(artwork);
+      const artworkPayload = {
+        id: artwork.id,
+        title: artwork.title,
+        artist_display: artwork.artistDisplay,
+        image_id: artwork.imageId,
+        image_url: artwork.imageUrl,
+        date_display: artwork.dateDisplay,
+        medium_display: artwork.mediumDisplay,
+        place_of_origin: artwork.placeOfOrigin,
+        description: artwork.description,
+        dimensions: artwork.dimensions,
+        source: artwork.source,
+        ...((artwork.fullData as any) || {}),
+      };
+      const chatId = await createMutation.mutateAsync(artworkPayload);
       setIsOpen(false);
       router.push(`/chat/${chatId}`);
     } catch (error: any) {
@@ -180,9 +189,9 @@ export function PaintingSearch({
               className="w-full flex items-center gap-4 p-4 hover:bg-odilon-accent/10 transition-colors text-left group/item cursor-pointer"
             >
               <div className="relative w-16 h-16 flex-shrink-0 bg-odilon-logo/5 rounded-sm overflow-hidden border border-odilon-logo/10">
-                {artwork.image_id ? (
+                {artwork.imageUrl ? (
                   <img
-                    src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/200,/0/default.jpg`}
+                    src={artwork.imageUrl}
                     alt={artwork.title}
                     className="object-cover w-full h-full group-hover/item:scale-110 transition-transform duration-500"
                   />
@@ -197,7 +206,7 @@ export function PaintingSearch({
                   {artwork.title}
                 </h4>
                 <p className="font-body text-sm text-odilon-logo/60 truncate mb-1">
-                  {artwork.artist_display}
+                  {artwork.artistDisplay}
                 </p>
                 <div className="flex">
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-header uppercase tracking-wider text-odilon-accent group-hover/item:underline underline-offset-4 transition-all duration-300">

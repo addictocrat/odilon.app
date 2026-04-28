@@ -80,9 +80,9 @@ export function ChatSidebar({ initialData }: { initialData?: Chat[] }) {
                   )}
                 >
                   <div className="relative w-12 h-12 flex-shrink-0 bg-[#483434]/5 rounded-sm overflow-hidden border border-[#483434]/10">
-                    {artwork.image_id ? (
+                    {(artwork.image_url || artwork.image_id) ? (
                       <img
-                        src={`https://www.artic.edu/iiif/2/${artwork.image_id}/full/200,/0/default.jpg`}
+                        src={artwork.image_url || `https://www.artic.edu/iiif/2/${artwork.image_id}/full/200,/0/default.jpg`}
                         alt={artwork.title}
                         className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
                       />
