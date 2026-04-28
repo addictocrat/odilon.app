@@ -403,7 +403,7 @@ export function ArtworkChatClient({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="p-4 md:p-6 flex items-center justify-between border-b border-[#483434]/10 bg-[#E7D4B5] z-10">
+        <header className="pt-9 sm:pt-10 pb-3 px-4 md:px-6 flex items-center justify-between border-b border-odilon-logo/5 bg-[#F6E6CB]/75 backdrop-blur-sm z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
