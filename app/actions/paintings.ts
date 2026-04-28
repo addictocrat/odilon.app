@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { paintings } from "@/lib/db/schema";
-import { eq, or, ilike, desc, sql, and } from "drizzle-orm";
+import { eq, or, ilike, desc, sql, and, isNotNull } from "drizzle-orm";
 
 export async function searchAndSyncArtworks(query: string, limit: number = 15) {
   if (!query.trim()) return [];
@@ -122,6 +122,7 @@ export async function getLibraryPaintings(params: {
 
 export async function getDiscoverPaintings(limit: number = 8) {
   return db.query.paintings.findMany({
+    where: isNotNull(paintings.imageId),
     limit,
     orderBy: [desc(paintings.createdAt)],
   });
