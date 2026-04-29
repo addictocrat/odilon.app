@@ -77,7 +77,9 @@ Return ONLY a JSON array:
   });
 
   try {
-    const rawRecs = JSON.parse(text);
+    // Strip markdown code fences that models add despite being told not to
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+    const rawRecs = JSON.parse(cleaned);
 
     // Enrich music recommendations with real preview URLs
     const enrichedRecs = await Promise.all(

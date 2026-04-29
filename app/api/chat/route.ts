@@ -1,5 +1,5 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamText, convertToModelMessages } from "ai";
+import { streamText } from "ai";
 import { updateConversationMessages } from "@/app/actions/chat";
 import { getSession } from "@/lib/auth/session";
 import { nanoid } from "nanoid";

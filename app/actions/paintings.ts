@@ -4,6 +4,171 @@ import { db } from "@/lib/db";
 import { paintings } from "@/lib/db/schema";
 import { eq, ne, or, ilike, desc, sql, and, isNotNull, notInArray } from "drizzle-orm";
 
+const WIKIMEDIA_BASE = "https://commons.wikimedia.org/w/api.php";
+const ALLOWED_LICENSES = ["CC0", "CC BY", "CC BY-SA"];
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, "").trim();
+}
+
+// EXIF timestamps look like "2018:02:14 00:00:00" — these are scan/upload dates, not creation dates
+function isExifTimestamp(val: string): boolean {
+  return /^\d{4}:\d{2}:\d{2}/.test(val);
+}
+
+async function syncWikimediaPaintings(query: string): Promise<void> {
+  // Cache check: skip API call if we already have fully-enriched wikimedia results.
+  // 'wikimediaRelevanceIndex' is the latest sentinel — records missing it (fetched by older
+  // logic) will be re-fetched and upserted with the relevance index included.
+  const [cached] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(paintings)
+    .where(
+      and(
+        eq(paintings.source, "wikimedia"),
+        sql`${paintings.fullData} ? 'wikimediaRelevanceIndex'`,
+        or(
+          ilike(paintings.title, `%${query}%`),
+          ilike(paintings.artistDisplay, `%${query}%`),
+        ),
+      ),
+    );
+
+  if (Number(cached.count) > 0) return;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const params = new URLSearchParams({
+      action: "query",
+      generator: "search",
+      gsrsearch: `${query} painting`,
+      gsrnamespace: "6",
+      prop: "imageinfo",
+      iiprop: "url|extmetadata",
+      iiurlwidth: "800",
+      format: "json",
+      gsrlimit: "10",
+      origin: "*",
+    });
+
+    const res = await fetch(`${WIKIMEDIA_BASE}?${params}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const pages: Record<string, any> = data.query?.pages ?? {};
+
+    const rows: {
+      id: string;
+      title: string;
+      artistDisplay: string | null;
+      imageId: null;
+      imageUrl: string;
+      source: string;
+      dateDisplay: string | null;
+      mediumDisplay: null;
+      placeOfOrigin: null;
+      description: string | null;
+      dimensions: null;
+      fullData: unknown;
+    }[] = [];
+
+    // Fallback position counter for engines that omit page.index
+    let fallbackPosition = 0;
+
+    for (const [pageId, page] of Object.entries(pages)) {
+      // page.index is 1-based in Wikimedia's API; convert to 0-based (0 = most relevant)
+      const relevanceIndex =
+        typeof page.index === "number" ? page.index - 1 : fallbackPosition;
+      fallbackPosition++;
+      const imageinfo = page.imageinfo?.[0];
+      if (!imageinfo) continue;
+
+      const imageUrl: string = imageinfo.url ?? "";
+      if (!imageUrl || !/\.(jpg|jpeg|png)$/i.test(imageUrl)) continue;
+
+      const meta = imageinfo.extmetadata ?? {};
+      const license: string = meta.LicenseShortName?.value ?? "";
+      if (!ALLOWED_LICENSES.some((l) => license.startsWith(l))) continue;
+
+      const rawTitle: string = page.title ?? "";
+      const title = rawTitle
+        .replace(/^File:/i, "")
+        .replace(/\.[^.]+$/, "")
+        .trim();
+      if (!title) continue;
+
+      const artistDisplay = meta.Artist?.value
+        ? stripHtml(meta.Artist.value) || null
+        : null;
+
+      // Prefer meta.Date (human-readable creation year like "1889") over DateTimeOriginal
+      // which is typically an EXIF scan/upload timestamp (e.g. "2018:02:14 00:00:00")
+      const rawDate = meta.Date?.value || meta.DateTimeOriginal?.value || null;
+      const dateDisplay =
+        rawDate && !isExifTimestamp(rawDate) ? rawDate : null;
+
+      // ImageDescription is the primary source for the About section
+      const description = meta.ImageDescription?.value
+        ? stripHtml(meta.ImageDescription.value) || null
+        : null;
+
+      const credit = meta.Credit?.value ?? null;
+
+      rows.push({
+        id: `wikimedia_${pageId}`,
+        title,
+        artistDisplay,
+        imageId: null,
+        imageUrl,
+        source: "wikimedia",
+        dateDisplay,
+        mediumDisplay: null,
+        placeOfOrigin: null,
+        description,
+        dimensions: null,
+        // fullData is spread into the artwork object when starting a chat (PaintingCard).
+        // The chat sidebar reads date_display and description from the spread — mirror them here
+        // so Wikimedia cards show the same Details / About sections as ArtIC and Met cards.
+        fullData: {
+          wikimediaRelevanceIndex: relevanceIndex,
+          date_display: dateDisplay,
+          description,
+          license,
+          credit,
+          pageId,
+        },
+      });
+    }
+
+    if (rows.length === 0) return;
+
+    await db
+      .insert(paintings)
+      .values(rows)
+      .onConflictDoUpdate({
+        target: paintings.id,
+        set: {
+          title: sql`excluded.title`,
+          artistDisplay: sql`excluded.artist_display`,
+          imageUrl: sql`excluded.image_url`,
+          dateDisplay: sql`excluded.date_display`,
+          description: sql`excluded.description`,
+          fullData: sql`excluded.full_data`,
+          updatedAt: new Date(),
+        },
+      });
+  } catch {
+    clearTimeout(timeoutId);
+    // Silent fallback on timeout or network error
+  }
+}
+
 export async function searchAndSyncArtworks(query: string, limit: number = 15) {
   if (!query.trim()) return [];
 
@@ -161,22 +326,77 @@ async function syncBothSources(query: string, limit?: number) {
   ]);
 }
 
+const dbSearchWhere = (query: string) =>
+  and(
+    isNotNull(paintings.imageUrl),
+    or(
+      ilike(paintings.title, `%${query}%`),
+      ilike(paintings.artistDisplay, `%${query}%`),
+    ),
+  );
+
+// Sort priority: artic → met → wikimedia, with per-source secondary criteria.
+// Pure in-memory sort — no extra DB queries.
+function sortPaintingResults<T extends { source: string | null; fullData: unknown }>(
+  results: T[],
+): T[] {
+  const GROUP: Record<string, number> = { artic: 0, met: 1, wikimedia: 2 };
+
+  return [...results].sort((a, b) => {
+    const aG = GROUP[a.source ?? ""] ?? 3;
+    const bG = GROUP[b.source ?? ""] ?? 3;
+    if (aG !== bG) return aG - bG;
+
+    const aF = (a.fullData as Record<string, any>) ?? {};
+    const bF = (b.fullData as Record<string, any>) ?? {};
+
+    if (a.source === "artic") {
+      // Boosted results first (ArtIC search relevance flag)
+      return (bF.is_boosted ? 1 : 0) - (aF.is_boosted ? 1 : 0);
+    }
+    if (a.source === "met") {
+      // Museum highlights first
+      return (bF.isHighlight ? 1 : 0) - (aF.isHighlight ? 1 : 0);
+    }
+    if (a.source === "wikimedia") {
+      // Lower index = more relevant (Elasticsearch rank from Wikimedia)
+      const aIdx =
+        typeof aF.wikimediaRelevanceIndex === "number"
+          ? aF.wikimediaRelevanceIndex
+          : Infinity;
+      const bIdx =
+        typeof bF.wikimediaRelevanceIndex === "number"
+          ? bF.wikimediaRelevanceIndex
+          : Infinity;
+      return aIdx - bIdx;
+    }
+    return 0;
+  });
+}
+
 export async function searchPaintings(query: string, limit: number = 10) {
   if (!query.trim()) return [];
 
   await syncBothSources(query, limit);
 
-  return db.query.paintings.findMany({
-    where: and(
-      isNotNull(paintings.imageUrl),
-      or(
-        ilike(paintings.title, `%${query}%`),
-        ilike(paintings.artistDisplay, `%${query}%`),
-      ),
-    ),
+  const localResults = await db.query.paintings.findMany({
+    where: dbSearchWhere(query),
     limit,
     orderBy: [desc(paintings.updatedAt)],
   });
+
+  if (localResults.length >= 3) return sortPaintingResults(localResults);
+
+  // Wikimedia fallback: called only when local DB returns fewer than 3 results
+  await syncWikimediaPaintings(query);
+
+  return sortPaintingResults(
+    await db.query.paintings.findMany({
+      where: dbSearchWhere(query),
+      limit,
+      orderBy: [desc(paintings.updatedAt)],
+    }),
+  );
 }
 
 export async function getLibraryPaintings(params: {
