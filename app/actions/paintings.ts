@@ -5,7 +5,9 @@ import { paintings } from "@/lib/db/schema";
 import { eq, ne, or, ilike, desc, sql, and, isNotNull, notInArray } from "drizzle-orm";
 
 const WIKIMEDIA_BASE = "https://commons.wikimedia.org/w/api.php";
-const ALLOWED_LICENSES = ["CC0", "CC BY", "CC BY-SA"];
+// CC licenses + all public-domain variants (PD-Art, PD-old, PD-old-100, etc.)
+// Famous paintings like Mona Lisa / Starry Night are public domain, not CC.
+const ALLOWED_LICENSES = ["CC0", "CC BY", "CC BY-SA", "Public domain", "PD"];
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").trim();
@@ -163,9 +165,9 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
           updatedAt: new Date(),
         },
       });
-  } catch {
+  } catch (err) {
     clearTimeout(timeoutId);
-    // Silent fallback on timeout or network error
+    console.warn("Wikimedia fallback failed:", err);
   }
 }
 
