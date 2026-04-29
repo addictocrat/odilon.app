@@ -14,7 +14,8 @@ export const TopBanner = ({ isAuthenticated = false, isAdmin = false }: TopBanne
   const isLanding = pathname === "/";
   const isDashboard = pathname.startsWith("/dashboard");
   const isChat = pathname.startsWith("/chat");
-  const showOdilonRight = isDashboard || isChat;
+  const isLibrary = pathname.startsWith("/paintings");
+  const showOdilonRight = isDashboard || isChat || isLibrary;
 
   return (
     <nav className={`fixed top-0 right-0 z-[100] flex justify-center items-center pointer-events-none px-2 py-1.5 sm:px-3 sm:py-2 backdrop-blur-sm ${isChat ? "left-0 lg:left-80" : "left-0"} ${isLanding ? "bg-[#F6E6CB]/60" : "bg-[#F6E6CB]/75 border-b border-odilon-logo/5"}`}>
