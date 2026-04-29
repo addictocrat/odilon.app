@@ -16,6 +16,7 @@ interface PaintingCardProps {
 export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const router = useRouter();
 
   const handleStartChat = async () => {
@@ -39,6 +40,8 @@ export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
     }
   };
 
+  if (imageError) return null;
+
   return (
     <div
       className="break-inside-avoid mb-2 sm:mb-6 group relative rounded-sm overflow-hidden bg-odilon-card border border-odilon-logo/5 shadow-sm hover:shadow-2xl transition-all duration-500 animate-in fade-in duration-1000 scale-95 hover:scale-[1.02]"
@@ -56,6 +59,7 @@ export function PaintingCard({ painting, compact = false }: PaintingCardProps) {
               compact ? "h-full object-cover" : "h-auto object-cover",
             )}
             loading="lazy"
+            onError={() => setImageError(true)}
           />
         ) : (
           <div className="aspect-[3/4] flex items-center justify-center bg-odilon-logo/5 text-odilon-logo/20 font-header uppercase tracking-tighter text-2xl">

@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { paintings } from "@/lib/db/schema";
-import { eq, or, ilike, desc, sql, and, isNotNull, notInArray } from "drizzle-orm";
+import { eq, ne, or, ilike, desc, sql, and, isNotNull, notInArray } from "drizzle-orm";
 
 export async function searchAndSyncArtworks(query: string, limit: number = 15) {
   if (!query.trim()) return [];
@@ -98,6 +98,7 @@ export async function syncMetPaintings(query: string) {
       (obj) =>
         obj.isPublicDomain === true &&
         obj.primaryImageSmall &&
+        obj.primaryImageSmall.trim() !== "" &&
         obj.objectName === "Painting",
     );
 
@@ -189,7 +190,9 @@ export async function getLibraryPaintings(params: {
 
   const offset = (page - 1) * limit;
 
-  let whereClause = undefined;
+  const hasImage = and(isNotNull(paintings.imageUrl), ne(paintings.imageUrl, ""));
+
+  let whereClause: ReturnType<typeof and> = hasImage;
 
   if (search || artist) {
     const conditions = [];
@@ -205,11 +208,7 @@ export async function getLibraryPaintings(params: {
       conditions.push(ilike(paintings.artistDisplay, `%${artist}%`));
     }
 
-    if (conditions.length > 1) {
-      whereClause = and(...conditions);
-    } else {
-      whereClause = conditions[0];
-    }
+    whereClause = and(hasImage, ...conditions);
   }
 
   const [countResult] = await db
