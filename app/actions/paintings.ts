@@ -13,22 +13,31 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
+// Wikimedia extmetadata fields often embed hidden <div style="display:none"> blocks
+// containing Wikidata QS markup. Slice at the first such block — everything before
+// it is the human-readable visible text — then strip remaining tags.
+function extractVisible(html: string): string {
+  const cut = html.search(/<[^>]*style="[^"]*display\s*:\s*none/i);
+  const visible = cut === -1 ? html : html.slice(0, cut);
+  return stripHtml(visible).replace(/\s+/g, " ").trim();
+}
+
 // EXIF timestamps look like "2018:02:14 00:00:00" — these are scan/upload dates, not creation dates
 function isExifTimestamp(val: string): boolean {
   return /^\d{4}:\d{2}:\d{2}/.test(val);
 }
 
 async function syncWikimediaPaintings(query: string): Promise<void> {
-  // Cache check: skip API call if we already have fully-enriched wikimedia results.
-  // 'wikimediaRelevanceIndex' is the latest sentinel — records missing it (fetched by older
-  // logic) will be re-fetched and upserted with the relevance index included.
+  // Cache check: 'cleanTitle' key signals the record was fetched with the current
+  // extraction logic (ObjectName-based title, hidden-div-stripped date).
+  // Records missing this key are stale and will be re-fetched and upserted.
   const [cached] = await db
     .select({ count: sql<number>`count(*)` })
     .from(paintings)
     .where(
       and(
         eq(paintings.source, "wikimedia"),
-        sql`${paintings.fullData} ? 'wikimediaRelevanceIndex'`,
+        sql`${paintings.fullData} ? 'cleanTitle'`,
         or(
           ilike(paintings.title, `%${query}%`),
           ilike(paintings.artistDisplay, `%${query}%`),
@@ -112,21 +121,30 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
         : null;
 
       // Prefer meta.Date (human-readable creation year like "1889") over DateTimeOriginal
-      // which is typically an EXIF scan/upload timestamp (e.g. "2018:02:14 00:00:00")
-      const rawDate = meta.Date?.value || meta.DateTimeOriginal?.value || null;
+      // which is typically an EXIF scan/upload timestamp (e.g. "2018:02:14 00:00:00").
+      // Both fields can embed hidden Wikidata divs — use extractVisible to strip them.
+      const rawDate = extractVisible(
+        meta.Date?.value || meta.DateTimeOriginal?.value || "",
+      );
       const dateDisplay =
         rawDate && !isExifTimestamp(rawDate) ? rawDate : null;
 
       // ImageDescription is the primary source for the About section
       const description = meta.ImageDescription?.value
-        ? stripHtml(meta.ImageDescription.value) || null
+        ? extractVisible(meta.ImageDescription.value) || null
         : null;
+
+      // Use ObjectName (proper artwork title) instead of the filename where possible
+      const objectNameTitle = meta.ObjectName?.value
+        ? extractVisible(meta.ObjectName.value)
+        : "";
+      const cleanTitle = objectNameTitle || title;
 
       const credit = meta.Credit?.value ?? null;
 
       rows.push({
         id: `wikimedia_${pageId}`,
-        title,
+        title: cleanTitle,
         artistDisplay,
         imageId: null,
         imageUrl,
@@ -140,6 +158,7 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
         // The chat sidebar reads date_display and description from the spread — mirror them here
         // so Wikimedia cards show the same Details / About sections as ArtIC and Met cards.
         fullData: {
+          cleanTitle: true,          // cache sentinel: record has clean title + date
           wikimediaRelevanceIndex: relevanceIndex,
           date_display: dateDisplay,
           description,
