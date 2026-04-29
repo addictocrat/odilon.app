@@ -174,18 +174,20 @@ export async function getLibraryPaintings(params: {
 }) {
   const { page = 1, limit = 20, search = "", artist = "" } = params;
 
-  if (search.trim()) {
-    await Promise.all([
-      searchAndSyncArtworks(search),
-      syncMetPaintings(search),
-    ]);
-  }
+  if (page === 1) {
+    if (search.trim()) {
+      await Promise.all([
+        searchAndSyncArtworks(search),
+        syncMetPaintings(search),
+      ]);
+    }
 
-  if (artist.trim()) {
-    await Promise.all([
-      searchAndSyncArtworks(artist, 40),
-      syncMetPaintings(artist),
-    ]);
+    if (artist.trim()) {
+      await Promise.all([
+        searchAndSyncArtworks(artist, 40),
+        syncMetPaintings(artist),
+      ]);
+    }
   }
 
   const offset = (page - 1) * limit;
