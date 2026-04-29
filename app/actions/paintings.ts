@@ -17,43 +17,45 @@ export async function searchAndSyncArtworks(query: string, limit: number = 15) {
     const results = data.data || [];
 
     if (results.length > 0) {
-      for (const artwork of results) {
+      const rows = results.map((artwork: any) => {
         const imageUrl = artwork.image_id
           ? `https://www.artic.edu/iiif/2/${artwork.image_id}/full/843,/0/default.jpg`
           : null;
-        await db
-          .insert(paintings)
-          .values({
-            id: `artic_${artwork.id}`,
-            title: artwork.title,
-            artistDisplay: artwork.artist_display,
-            imageId: artwork.image_id,
-            imageUrl,
-            source: "artic",
-            dateDisplay: artwork.date_display,
-            mediumDisplay: artwork.medium_display,
-            placeOfOrigin: artwork.place_of_origin,
-            description: artwork.description,
-            dimensions: artwork.dimensions,
-            fullData: artwork,
-          })
-          .onConflictDoUpdate({
-            target: paintings.id,
-            set: {
-              title: artwork.title,
-              artistDisplay: artwork.artist_display,
-              imageId: artwork.image_id,
-              imageUrl,
-              dateDisplay: artwork.date_display,
-              mediumDisplay: artwork.medium_display,
-              placeOfOrigin: artwork.place_of_origin,
-              description: artwork.description,
-              dimensions: artwork.dimensions,
-              fullData: artwork,
-              updatedAt: new Date(),
-            },
-          });
-      }
+        return {
+          id: `artic_${artwork.id}`,
+          title: artwork.title,
+          artistDisplay: artwork.artist_display,
+          imageId: artwork.image_id,
+          imageUrl,
+          source: "artic" as const,
+          dateDisplay: artwork.date_display,
+          mediumDisplay: artwork.medium_display,
+          placeOfOrigin: artwork.place_of_origin,
+          description: artwork.description,
+          dimensions: artwork.dimensions,
+          fullData: artwork,
+        };
+      });
+
+      await db
+        .insert(paintings)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: paintings.id,
+          set: {
+            title: sql`excluded.title`,
+            artistDisplay: sql`excluded.artist_display`,
+            imageId: sql`excluded.image_id`,
+            imageUrl: sql`excluded.image_url`,
+            dateDisplay: sql`excluded.date_display`,
+            mediumDisplay: sql`excluded.medium_display`,
+            placeOfOrigin: sql`excluded.place_of_origin`,
+            description: sql`excluded.description`,
+            dimensions: sql`excluded.dimensions`,
+            fullData: sql`excluded.full_data`,
+            updatedAt: new Date(),
+          },
+        });
     }
 
     return results;
@@ -102,41 +104,43 @@ export async function syncMetPaintings(query: string) {
         obj.objectName === "Painting",
     );
 
-    for (const obj of valid) {
-      const artistDisplay = [obj.artistDisplayName, obj.artistDisplayBio]
-        .filter(Boolean)
-        .join("\n") || null;
-
-      const description = obj.tags?.map((t: any) => t.term).join(", ") || null;
-
-      await db
-        .insert(paintings)
-        .values({
+    if (valid.length > 0) {
+      const rows = valid.map((obj: any) => {
+        const artistDisplay = [obj.artistDisplayName, obj.artistDisplayBio]
+          .filter(Boolean)
+          .join("\n") || null;
+        const description = obj.tags?.map((t: any) => t.term).join(", ") || null;
+        return {
           id: `met_${obj.objectID}`,
           title: obj.title,
           artistDisplay,
-          imageId: null,
+          imageId: null as null,
           imageUrl: obj.primaryImageSmall,
-          source: "met",
+          source: "met" as const,
           dateDisplay: obj.objectDate || null,
           mediumDisplay: obj.medium || null,
           placeOfOrigin: obj.country || null,
           dimensions: obj.dimensions || null,
           description,
           fullData: obj,
-        })
+        };
+      });
+
+      await db
+        .insert(paintings)
+        .values(rows)
         .onConflictDoUpdate({
           target: paintings.id,
           set: {
-            title: obj.title,
-            artistDisplay,
-            imageUrl: obj.primaryImageSmall,
-            dateDisplay: obj.objectDate || null,
-            mediumDisplay: obj.medium || null,
-            placeOfOrigin: obj.country || null,
-            dimensions: obj.dimensions || null,
-            description,
-            fullData: obj,
+            title: sql`excluded.title`,
+            artistDisplay: sql`excluded.artist_display`,
+            imageUrl: sql`excluded.image_url`,
+            dateDisplay: sql`excluded.date_display`,
+            mediumDisplay: sql`excluded.medium_display`,
+            placeOfOrigin: sql`excluded.place_of_origin`,
+            dimensions: sql`excluded.dimensions`,
+            description: sql`excluded.description`,
+            fullData: sql`excluded.full_data`,
             updatedAt: new Date(),
           },
         });
