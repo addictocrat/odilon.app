@@ -91,7 +91,9 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
       const imageinfo = page.imageinfo?.[0];
       if (!imageinfo) continue;
 
-      const imageUrl: string = imageinfo.url ?? "";
+      // Prefer the pre-scaled thumbnail (~960px); fall back to original URL only when
+      // thumburl is absent. Original files can be 100MB+ (e.g. Google Art Project scans).
+      const imageUrl: string = imageinfo.thumburl ?? imageinfo.url ?? "";
       if (!imageUrl || !/\.(jpg|jpeg|png)$/i.test(imageUrl)) continue;
 
       const meta = imageinfo.extmetadata ?? {};
@@ -379,18 +381,13 @@ function sortPaintingResults<T extends { source: string | null; fullData: unknow
 export async function searchPaintings(query: string, limit: number = 10) {
   if (!query.trim()) return [];
 
-  await syncBothSources(query, limit);
-
-  const localResults = await db.query.paintings.findMany({
-    where: dbSearchWhere(query),
-    limit,
-    orderBy: [desc(paintings.updatedAt)],
-  });
-
-  if (localResults.length >= 3) return sortPaintingResults(localResults);
-
-  // Wikimedia fallback: called only when local DB returns fewer than 3 results
-  await syncWikimediaPaintings(query);
+  // All three sources run in parallel. Wikimedia has its own cache check so the
+  // external API call happens only once per query; subsequent calls are free DB reads.
+  // Running in parallel means no extra wall-clock latency compared to ArtIC + Met alone.
+  await Promise.all([
+    syncBothSources(query, limit),
+    syncWikimediaPaintings(query),
+  ]);
 
   return sortPaintingResults(
     await db.query.paintings.findMany({
