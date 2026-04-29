@@ -13,6 +13,7 @@ export async function searchAndSyncArtworks(query: string, limit: number = 15) {
         query,
       )}&fields=id,title,artist_display,image_id,description,medium_display,date_display,place_of_origin,dimensions&limit=${limit}`,
     );
+    if (!response.ok) return [];
     const data = await response.json();
     const results = data.data || [];
 
@@ -153,13 +154,17 @@ export async function syncMetPaintings(query: string) {
   }
 }
 
-export async function searchPaintings(query: string, limit: number = 10) {
-  if (!query.trim()) return [];
-
+async function syncBothSources(query: string, limit?: number) {
   await Promise.all([
     searchAndSyncArtworks(query, limit),
     syncMetPaintings(query),
   ]);
+}
+
+export async function searchPaintings(query: string, limit: number = 10) {
+  if (!query.trim()) return [];
+
+  await syncBothSources(query, limit);
 
   return db.query.paintings.findMany({
     where: and(
@@ -183,19 +188,8 @@ export async function getLibraryPaintings(params: {
   const { page = 1, limit = 20, search = "", artist = "" } = params;
 
   if (page === 1) {
-    if (search.trim()) {
-      await Promise.all([
-        searchAndSyncArtworks(search),
-        syncMetPaintings(search),
-      ]);
-    }
-
-    if (artist.trim()) {
-      await Promise.all([
-        searchAndSyncArtworks(artist, 40),
-        syncMetPaintings(artist),
-      ]);
-    }
+    if (search.trim()) await syncBothSources(search);
+    if (artist.trim()) await syncBothSources(artist, 40);
   }
 
   const offset = (page - 1) * limit;
@@ -270,9 +264,6 @@ export async function seedFeaturedPaintings() {
     "Hilma af Klint",
   ];
   for (const query of featuredQueries) {
-    await Promise.all([
-      searchAndSyncArtworks(query),
-      syncMetPaintings(query),
-    ]);
+    await syncBothSources(query);
   }
 }

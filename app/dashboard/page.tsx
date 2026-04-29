@@ -10,7 +10,7 @@ import { PaintingSearch } from "@/components/PaintingSearch";
 import { DashboardClient } from "./DashboardClient";
 import { getConversations } from "@/app/actions/chat";
 import { RecentPaintings, SuggestedPaintings } from "@/components/RecentPaintings";
-import { getLibraryPaintings, getDiscoverPaintings } from "@/app/actions/paintings";
+import { getLibraryPaintings, getDiscoverPaintings, seedFeaturedPaintings } from "@/app/actions/paintings";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -37,7 +37,12 @@ export default async function DashboardPage() {
   const vanGoghPaintings = vanGoghPaintingsResult.paintings;
 
   const chattedIds = conversations.map((c) => c.artworkId);
-  const discoverPaintings = await getDiscoverPaintings(10, chattedIds);
+  let discoverPaintings = await getDiscoverPaintings(10, chattedIds);
+
+  if (discoverPaintings.length === 0) {
+    await seedFeaturedPaintings();
+    discoverPaintings = await getDiscoverPaintings(10, chattedIds);
+  }
 
   return (
     <DashboardClient initialConversations={conversations}>

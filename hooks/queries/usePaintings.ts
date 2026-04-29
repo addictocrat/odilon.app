@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getLibraryPaintings, getUniqueArtists, searchPaintings } from "@/app/actions/paintings";
 
 export const PAINTING_KEYS = {
@@ -30,10 +30,12 @@ export function useInfinitePaintings(filters: { search?: string; artist?: string
   });
 }
 
-export function useSearchArtworks() {
-  return useMutation({
-    mutationFn: ({ query, limit }: { query: string; limit?: number }) =>
-      searchPaintings(query, limit),
+export function useSearchPaintings(query: string, limit: number) {
+  return useQuery({
+    queryKey: PAINTING_KEYS.search(query),
+    queryFn: () => searchPaintings(query, limit),
+    enabled: !!query.trim(),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

@@ -15,7 +15,7 @@ interface PaintingSearchProps {
 
 import { Painting } from "@/lib/db/schema";
 import { useAuth } from "@/hooks/queries/useAuth";
-import { useSearchArtworks } from "@/hooks/queries/usePaintings";
+import { useSearchPaintings } from "@/hooks/queries/usePaintings";
 import { useCreateConversation } from "@/hooks/queries/useChats";
 
 export function PaintingSearch({
@@ -26,11 +26,11 @@ export function PaintingSearch({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Painting[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [submittedQuery, setSubmittedQuery] = useState<{ q: string; limit: number } | null>(null);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: isLoggedIn = null } = useAuth();
-  const searchMutation = useSearchArtworks();
   const createMutation = useCreateConversation();
 
   const closedEyes = PAINTINGS.find((p) => p.id === "closed-eyes");
@@ -38,27 +38,50 @@ export function PaintingSearch({
     ? `${closedEyes.title} - ${closedEyes.artist}`
     : "Talk to paintings...";
 
-  const searchArtworks = async (searchTerm: string) => {
+  const { data: searchData, isFetching: isLoading, isError } = useSearchPaintings(
+    submittedQuery?.q ?? "",
+    submittedQuery?.limit ?? 10,
+  );
+
+  useEffect(() => {
+    if (searchData) {
+      setResults(searchData);
+      if (searchData.length > 0) setIsOpen(true);
+    }
+  }, [searchData]);
+
+  useEffect(() => {
+    if (isError) toast.error("Failed to search artworks. Please try again.");
+  }, [isError]);
+
+  const searchArtworks = (searchTerm: string) => {
     if (!searchTerm.trim()) {
       setResults([]);
+      setSubmittedQuery(null);
+      return;
+    }
+
+    if (submittedQuery?.q === searchTerm && searchData && searchData.length > 0) {
+      setIsOpen(true);
       return;
     }
 
     if (isLoggedIn === null) return;
 
-    // Rate Limiting Logic (Simplified for brevity, but still functional)
     if (!isLoggedIn) {
-      const guestQueries = parseInt(localStorage.getItem("odilon_guest_queries") || "0");
-      if (guestQueries >= 3) {
+      const now = Date.now();
+      const guestHistory: number[] = JSON.parse(localStorage.getItem("odilon_guest_queries") || "[]");
+      const recentGuest = guestHistory.filter((t) => now - t < 24 * 60 * 60 * 1000);
+      if (recentGuest.length >= 3) {
         toast.info("You've reached the guest limit. Join us to continue exploring.");
         router.push("/signup");
         return;
       }
-      localStorage.setItem("odilon_guest_queries", (guestQueries + 1).toString());
+      localStorage.setItem("odilon_guest_queries", JSON.stringify([...recentGuest, now]));
     } else {
       const now = Date.now();
-      const queryHistory = JSON.parse(localStorage.getItem("odilon_user_query_history") || "[]");
-      const recentQueries = queryHistory.filter((t: number) => now - t < 120000);
+      const queryHistory: number[] = JSON.parse(localStorage.getItem("odilon_user_query_history") || "[]");
+      const recentQueries = queryHistory.filter((t) => now - t < 120000);
       if (recentQueries.length >= 10) {
         toast.warning("You're moving fast! Take a moment to breathe with the art.");
         return;
@@ -66,15 +89,8 @@ export function PaintingSearch({
       localStorage.setItem("odilon_user_query_history", JSON.stringify([...recentQueries, now]));
     }
 
-    try {
-      const limit = isLoggedIn ? 10 : 6;
-      const data = await searchMutation.mutateAsync({ query: searchTerm, limit });
-      setResults((data as Painting[]) || []);
-      setIsOpen(true);
-    } catch (error) {
-      console.error("Error searching artworks:", error);
-      toast.error("Failed to search artworks. Please try again.");
-    }
+    const limit = isLoggedIn ? 10 : 6;
+    setSubmittedQuery({ q: searchTerm, limit });
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -120,7 +136,6 @@ export function PaintingSearch({
     }
   };
 
-  const isLoading = searchMutation.isPending;
   const isCreating = createMutation.isPending;
 
   // Close dropdown on click outside
