@@ -37,7 +37,7 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
     .where(
       and(
         eq(paintings.source, "wikimedia"),
-        sql`${paintings.fullData} ? 'cleanTitle'`,
+        sql`${paintings.fullData} ? 'langNorm'`,
         or(
           ilike(paintings.title, `%${query}%`),
           ilike(paintings.artistDisplay, `%${query}%`),
@@ -54,7 +54,7 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
     const params = new URLSearchParams({
       action: "query",
       generator: "search",
-      gsrsearch: `${query} painting`,
+      gsrsearch: `${query} hastemplate:Artwork`,
       gsrnamespace: "6",
       prop: "imageinfo",
       iiprop: "url|extmetadata",
@@ -134,11 +134,27 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
         ? extractVisible(meta.ImageDescription.value) || null
         : null;
 
-      // Use ObjectName (proper artwork title) instead of the filename where possible
+      // Require a named artist — filters out anonymous uploads and usernames like "Horitokibd"
+      if (!artistDisplay) continue;
+
+      // Use ObjectName (proper artwork title) instead of the filename where possible.
+      // Require ObjectName to be present — paintings in museum collections always have it;
+      // random photos (fashion, portraits, textiles) typically do not.
       const objectNameTitle = meta.ObjectName?.value
         ? extractVisible(meta.ObjectName.value)
         : "";
-      const cleanTitle = objectNameTitle || title;
+      if (!objectNameTitle) continue;
+
+      // Wikimedia ObjectNames can be bilingual: "Dutch: Sterrennacht The Starry Night".
+      // Strip the language-label prefix (single known language word + colon + foreign word)
+      // to get the clean English title. "Van Gogh: ..." won't match (two words before colon).
+      const LANG_PREFIX =
+        /^(?:dutch|french|german|italian|spanish|english|portuguese|russian|flemish|swedish|danish|norwegian|polish|czech|hungarian|catalan|latin|greek|turkish|arabic|chinese|japanese|korean|ukrainian|romanian|finnish|icelandic):\s+\S+\s+/i;
+      const cleanTitle = objectNameTitle.replace(LANG_PREFIX, "").trim() || objectNameTitle;
+
+      // Block commercial fashion / textile products that slip through as "artworks"
+      const FASHION_BLOCK = /\b(saree?|sari|fashion|textile|clothing|drape)\b/i;
+      if (FASHION_BLOCK.test(cleanTitle)) continue;
 
       const credit = meta.Credit?.value ?? null;
 
@@ -158,7 +174,7 @@ async function syncWikimediaPaintings(query: string): Promise<void> {
         // The chat sidebar reads date_display and description from the spread — mirror them here
         // so Wikimedia cards show the same Details / About sections as ArtIC and Met cards.
         fullData: {
-          cleanTitle: true,          // cache sentinel: record has clean title + date
+          langNorm: true,            // cache sentinel: language prefix stripped from title
           wikimediaRelevanceIndex: relevanceIndex,
           date_display: dateDisplay,
           description,
@@ -397,6 +413,29 @@ function sortPaintingResults<T extends { source: string | null; fullData: unknow
   });
 }
 
+// Deduplicate sorted results: keep the first (highest-priority) occurrence of each
+// (normalized-title, normalized-artist) pair. Runs after sort so artic > met > wikimedia wins.
+function deduplicatePaintings<
+  T extends { title: string; artistDisplay: string | null },
+>(results: T[]): T[] {
+  const seen = new Set<string>();
+  return results.filter((item) => {
+    const titleKey = item.title
+      .toLowerCase()
+      .replace(/^(the|a|an)\s+/i, "")
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 25);
+    const artistKey = (item.artistDisplay ?? "")
+      .toLowerCase()
+      .replace(/[^a-z]/g, "")
+      .slice(0, 20);
+    const key = `${titleKey}|${artistKey}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function searchPaintings(query: string, limit: number = 10) {
   if (!query.trim()) return [];
 
@@ -408,13 +447,14 @@ export async function searchPaintings(query: string, limit: number = 10) {
     syncWikimediaPaintings(query),
   ]);
 
-  return sortPaintingResults(
-    await db.query.paintings.findMany({
-      where: dbSearchWhere(query),
-      limit,
-      orderBy: [desc(paintings.updatedAt)],
-    }),
-  );
+  // Fetch extra rows so dedup doesn't reduce final count below `limit`.
+  const raw = await db.query.paintings.findMany({
+    where: dbSearchWhere(query),
+    limit: limit * 2,
+    orderBy: [desc(paintings.updatedAt)],
+  });
+
+  return deduplicatePaintings(sortPaintingResults(raw)).slice(0, limit);
 }
 
 export async function getLibraryPaintings(params: {
@@ -474,13 +514,15 @@ export async function getLibraryPaintings(params: {
 }
 
 export async function getDiscoverPaintings(limit: number = 8, excludeIds: string[] = []) {
-  return db.query.paintings.findMany({
+  const raw = await db.query.paintings.findMany({
     where: excludeIds.length
       ? and(isNotNull(paintings.imageUrl), notInArray(paintings.id, excludeIds))
       : isNotNull(paintings.imageUrl),
-    limit,
+    limit: limit * 2,
     orderBy: [desc(paintings.createdAt)],
   });
+
+  return deduplicatePaintings(raw).slice(0, limit);
 }
 
 export async function getUniqueArtists() {
