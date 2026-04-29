@@ -107,6 +107,8 @@ export async function syncMetPaintings(query: string) {
         .filter(Boolean)
         .join("\n") || null;
 
+      const description = obj.tags?.map((t: any) => t.term).join(", ") || null;
+
       await db
         .insert(paintings)
         .values({
@@ -120,6 +122,7 @@ export async function syncMetPaintings(query: string) {
           mediumDisplay: obj.medium || null,
           placeOfOrigin: obj.country || null,
           dimensions: obj.dimensions || null,
+          description,
           fullData: obj,
         })
         .onConflictDoUpdate({
@@ -132,6 +135,7 @@ export async function syncMetPaintings(query: string) {
             mediumDisplay: obj.medium || null,
             placeOfOrigin: obj.country || null,
             dimensions: obj.dimensions || null,
+            description,
             fullData: obj,
             updatedAt: new Date(),
           },
