@@ -47,6 +47,18 @@ Odilon's AI serves two primary roles: the "spirit of art" for paintings and the 
   - **Painting Chat**: Uses `useChat` from Vercel AI SDK for streaming conversations.
   - **Legacy Actions**: Direct server actions are still used for initial SSR and non-query-based mutations (e.g., Auth).
 
+## 🔍 Painting Search Architecture
+
+The `PaintingSearch` component uses a multi-source sync strategy to populate the local library in real-time.
+
+### 🔄 Sync Workflow
+1.  **Trigger**: User submits a query via `useSearchPaintings` hook.
+2.  **Server Action**: `searchPaintings` (in `app/actions/paintings.ts`) runs three parallel syncs:
+    *   **ArtIC**: Fetches from Art Institute of Chicago.
+    *   **The Met**: Fetches top 5 results from the Metropolitan Museum of Art.
+    *   **Wikimedia**: Fallback source for long-tail artists, cached in DB by query.
+3.  **Consolidation**: Results are upserted to the `paintings` table, sorted by source priority (ArtIC > Met > Wikimedia), and deduplicated.
+
 ## 🔐 Authentication & Security
 
 Odilon uses a **custom, stateless JWT-based authentication system**.

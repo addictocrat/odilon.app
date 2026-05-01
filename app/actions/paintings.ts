@@ -266,7 +266,7 @@ export async function searchAndSyncArtworks(query: string, limit: number = 15) {
     return results;
   } catch (error) {
     console.error("Error searching and syncing artworks:", error);
-    throw error;
+    return [];
   }
 }
 
@@ -282,7 +282,7 @@ export async function syncMetPaintings(query: string) {
     );
     if (!searchRes.ok) return [];
     const searchData = await searchRes.json();
-    const objectIds: number[] = (searchData.objectIDs || []).slice(0, 20);
+    const objectIds: number[] = (searchData.objectIDs || []).slice(0, 5);
 
     if (objectIds.length === 0) return [];
 

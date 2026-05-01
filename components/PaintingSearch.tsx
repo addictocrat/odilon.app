@@ -32,6 +32,7 @@ export function PaintingSearch({
 
   const { data: isLoggedIn = null } = useAuth();
   const createMutation = useCreateConversation();
+  const [limitExceeded, setLimitExceeded] = useState(false);
 
   const closedEyes = PAINTINGS.find((p) => p.id === "closed-eyes");
   const defaultPlaceholder = closedEyes
@@ -55,6 +56,7 @@ export function PaintingSearch({
   }, [isError]);
 
   const searchArtworks = (searchTerm: string) => {
+    setLimitExceeded(false);
     if (!searchTerm.trim()) {
       setResults([]);
       setSubmittedQuery(null);
@@ -70,9 +72,18 @@ export function PaintingSearch({
 
     if (!isLoggedIn) {
       const now = Date.now();
-      const guestHistory: number[] = JSON.parse(localStorage.getItem("odilon_guest_queries") || "[]");
-      const recentGuest = guestHistory.filter((t) => now - t < 24 * 60 * 60 * 1000);
-      if (recentGuest.length >= 3) {
+      let guestHistory: number[] = [];
+      try {
+        const stored = localStorage.getItem("odilon_guest_queries");
+        const parsed = stored ? JSON.parse(stored) : [];
+        guestHistory = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        guestHistory = [];
+      }
+
+      const recentGuest = guestHistory.filter((t) => typeof t === "number" && now - t < 24 * 60 * 60 * 1000);
+      if (recentGuest.length >= 5) {
+        setLimitExceeded(true);
         toast.info("You've reached the guest limit. Join us to continue exploring.");
         router.push("/signup");
         return;
@@ -80,10 +91,19 @@ export function PaintingSearch({
       localStorage.setItem("odilon_guest_queries", JSON.stringify([...recentGuest, now]));
     } else {
       const now = Date.now();
-      const queryHistory: number[] = JSON.parse(localStorage.getItem("odilon_user_query_history") || "[]");
-      const recentQueries = queryHistory.filter((t) => now - t < 120000);
-      if (recentQueries.length >= 10) {
-        toast.warning("You're moving fast! Take a moment to breathe with the art.");
+      let queryHistory: number[] = [];
+      try {
+        const stored = localStorage.getItem("odilon_user_query_history");
+        const parsed = stored ? JSON.parse(stored) : [];
+        queryHistory = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        queryHistory = [];
+      }
+
+      const recentQueries = queryHistory.filter((t) => typeof t === "number" && now - t < 24 * 60 * 60 * 1000);
+      if (recentQueries.length >= 50) {
+        setLimitExceeded(true);
+        toast.warning("You've explored a lot today! Take a moment to breathe with the art.");
         return;
       }
       localStorage.setItem("odilon_user_query_history", JSON.stringify([...recentQueries, now]));
@@ -187,6 +207,12 @@ export function PaintingSearch({
           )}
         </button>
       </form>
+
+      {limitExceeded && (
+        <p className="text-[10px] sm:text-xs text-orange-600 mt-2 font-body text-center animate-pulse">
+          Daily limit reached. Please wait a few hours to continue your search.
+        </p>
+      )}
 
       {/* Results Dropdown */}
       {isOpen && results.length > 0 && (
